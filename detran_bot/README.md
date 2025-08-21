@@ -111,7 +111,8 @@ O bot usa os seguintes intents:
 ## 📋 Comandos Disponíveis
 
 ### Registro e CNH
-- `/registrar` - Registra um novo jogador
+- `/registrar` - Registro de novo membro
+- `/registrar_jogador` - Registra um novo jogador
 - `/cnh_emitir` - Emite uma nova CNH
 - `/cnh_consultar` - Consulta status da CNH
 - `/cnh_suspender` - Suspende CNH

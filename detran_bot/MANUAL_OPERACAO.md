@@ -50,7 +50,7 @@ Filtra por cargo (opcional)
 
 ### Registrar Novo Jogador
 ```
-/registrar UTC58846 "João Silva" "(11) 99999-9999"
+/registrar_jogador UTC58846 "João Silva" "(11) 99999-9999"
 ```
 - **RG**: Identificador único do jogador no jogo
 - **Nome**: Nome do personagem no RP
@@ -258,7 +258,7 @@ Status: pendente, paga, recorrida
 
 ### "Jogador Não Encontrado"
 - Verifique se o RG está correto
-- Use `/registrar` se o jogador não estiver no sistema
+- Use `/registrar_jogador` se o jogador não estiver no sistema
 
 ### "Veículo Não Encontrado"
 - Confirme a placa digitada
