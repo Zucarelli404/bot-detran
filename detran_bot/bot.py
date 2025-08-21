@@ -523,18 +523,6 @@ async def veiculo_liberar(interaction: discord.Interaction, placa: str):
     tipo_infracao="Tipo de infração",
     placa_veiculo="Placa do veículo (opcional)"
 )
-@app_commands.choices(tipo_infracao=[
-    app_commands.Choice(name="Excesso de velocidade (leve)", value="excesso_velocidade_leve"),
-    app_commands.Choice(name="Excesso de velocidade (médio)", value="excesso_velocidade_medio"),
-    app_commands.Choice(name="Excesso de velocidade (grave)", value="excesso_velocidade_grave"),
-    app_commands.Choice(name="Condução sem CNH", value="conducao_sem_cnh"),
-    app_commands.Choice(name="Documentação irregular", value="documentacao_irregular"),
-    app_commands.Choice(name="Recusa ao bafômetro", value="recusa_bafometro"),
-    app_commands.Choice(name="Direção perigosa", value="direcao_perigosa"),
-    app_commands.Choice(name="Estacionamento proibido", value="estacionamento_proibido"),
-    app_commands.Choice(name="Sem capacete", value="sem_capacete"),
-    app_commands.Choice(name="Transporte irregular", value="transporte_irregular")
-])
 async def multar(interaction: discord.Interaction, rg_game: str, tipo_infracao: str, placa_veiculo: str = None):
     if not verificar_permissao(interaction, "multar"):
         embed = criar_embed_erro("Sem Permissão", "Você não tem permissão para executar este comando.")
@@ -555,7 +543,11 @@ async def multar(interaction: discord.Interaction, rg_game: str, tipo_infracao: 
             return
         placa_veiculo = placa_veiculo.upper()
     
-    infracao = TABELA_INFRACOES[tipo_infracao]
+    infracao = TABELA_INFRACOES.get(tipo_infracao)
+    if not infracao:
+        embed = criar_embed_erro("Infração Inválida", "O código de infração informado não existe.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        return
     multa_id = db.aplicar_multa(
         rg_game, 
         infracao['descricao'], 
@@ -567,14 +559,15 @@ async def multar(interaction: discord.Interaction, rg_game: str, tipo_infracao: 
     
     # Verificar se houve reincidência
     player_atualizado = db.get_player(rg_game)
-    valor_final = infracao['valor']
-    
+
     # Verificar se foi multa em dobro por reincidência
     with sqlite3.connect(db.db_path) as conn:
         cursor = conn.cursor()
         cursor.execute('SELECT valor FROM multas WHERE id = ?', (multa_id,))
         valor_aplicado = cursor.fetchone()[0]
         reincidencia = valor_aplicado > infracao['valor']
+
+    valor_desconto = valor_aplicado * 0.85
     
     embed = discord.Embed(
         title="🚨 Multa Aplicada",
@@ -583,7 +576,9 @@ async def multar(interaction: discord.Interaction, rg_game: str, tipo_infracao: 
     embed.add_field(name="Jogador", value=f"{player['nome_rp']} ({rg_game})", inline=True)
     embed.add_field(name="Infração", value=infracao['descricao'], inline=False)
     embed.add_field(name="Valor", value=f"R$ {valor_aplicado:.2f}", inline=True)
+    embed.add_field(name="Valor com desconto", value=f"R$ {valor_desconto:.2f}", inline=True)
     embed.add_field(name="Pontos", value=infracao['pontos'], inline=True)
+    embed.add_field(name="Pátio", value=f"{infracao['patio']}h", inline=True)
     embed.add_field(name="Agente", value=interaction.user.mention, inline=True)
     
     if placa_veiculo:
@@ -603,6 +598,17 @@ async def multar(interaction: discord.Interaction, rg_game: str, tipo_infracao: 
         embed.add_field(name="❌ CNH Revogada", value="CNH revogada automaticamente por excesso de pontos", inline=False)
     
     await interaction.response.send_message(embed=embed)
+
+
+@multar.autocomplete("tipo_infracao")
+async def multar_autocomplete(interaction: discord.Interaction, current: str):
+    resultados = []
+    for codigo, infracao in TABELA_INFRACOES.items():
+        if current.lower() in infracao["descricao"].lower():
+            resultados.append(app_commands.Choice(name=infracao["descricao"], value=codigo))
+        if len(resultados) >= 25:
+            break
+    return resultados
 
 @bot.tree.command(name="multa_consultar", description="Lista as multas de um jogador")
 @app_commands.describe(
@@ -848,12 +854,26 @@ async def infracoes(interaction: discord.Interaction):
         color=CORES["aviso"]
     )
     
-    for codigo, infracao in TABELA_INFRACOES.items():
-        embed.add_field(
-            name=infracao['descricao'],
-            value=f"**Valor:** R$ {infracao['valor']:.2f}\n**Pontos:** {infracao['pontos']}",
-            inline=True
+    categorias = {"Leves": [], "Médias": [], "Graves": [], "Gravíssimas": []}
+    for infracao in TABELA_INFRACOES.values():
+        valor_desconto = infracao['valor'] * 0.85
+        linha = (
+            f"• {infracao['descricao']}\n"
+            f"  Valor: R$ {infracao['valor']:.2f} (desc: R$ {valor_desconto:.2f})\n"
+            f"  Pontos: {infracao['pontos']} | Pátio: {infracao['patio']}h"
         )
+        if infracao['pontos'] == 3:
+            categorias["Leves"].append(linha)
+        elif infracao['pontos'] == 4:
+            categorias["Médias"].append(linha)
+        elif infracao['pontos'] == 5:
+            categorias["Graves"].append(linha)
+        else:
+            categorias["Gravíssimas"].append(linha)
+
+    for nome, itens in categorias.items():
+        if itens:
+            embed.add_field(name=nome, value="\n".join(itens), inline=False)
     
     embed.add_field(
         name="⚠️ Observações",
