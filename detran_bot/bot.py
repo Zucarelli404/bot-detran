@@ -3,6 +3,7 @@ from discord.ext import commands
 from discord import app_commands
 import os
 from datetime import datetime
+import sqlite3
 from database import DetranDatabase
 from config import *
 
@@ -422,16 +423,6 @@ async def veiculo_liberar(interaction: discord.Interaction, placa: str):
     
     await interaction.response.send_message(embed=embed)
 
-# Comando para executar o bot
-if __name__ == "__main__":
-    # Verificar se o token foi definido
-    if DISCORD_TOKEN == "SEU_TOKEN_AQUI":
-        print("❌ ERRO: Token do Discord não configurado!")
-        print("Edite o arquivo config.py e defina seu token do Discord.")
-    else:
-        bot.run(DISCORD_TOKEN)
-
-
 # Comandos de Multas e Infrações
 @bot.tree.command(name="multar", description="Aplica uma multa a um jogador")
 @app_commands.describe(
@@ -808,7 +799,6 @@ async def relatorio_multas_agente(interaction: discord.Interaction, agente: disc
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
     
-    import sqlite3
     with sqlite3.connect(db.db_path) as conn:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
@@ -855,7 +845,6 @@ async def relatorio_cnhs_suspensas(interaction: discord.Interaction):
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
     
-    import sqlite3
     with sqlite3.connect(db.db_path) as conn:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
@@ -892,6 +881,12 @@ async def relatorio_cnhs_suspensas(interaction: discord.Interaction):
     embed.set_footer(text=f"Relatório gerado em {datetime.now().strftime('%d/%m/%Y %H:%M')}")
     await interaction.response.send_message(embed=embed)
 
-# Importar sqlite3 no início do arquivo
-import sqlite3
+# Comando para executar o bot
+if __name__ == "__main__":
+    # Verificar se o token foi definido
+    if DISCORD_TOKEN == "SEU_TOKEN_AQUI":
+        print("❌ ERRO: Token do Discord não configurado!")
+        print("Edite o arquivo config.py e defina seu token do Discord.")
+    else:
+        bot.run(DISCORD_TOKEN)
 
