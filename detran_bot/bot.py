@@ -16,6 +16,19 @@ intents.members = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 db = DetranDatabase()
 
+# Carrega configurações dinâmicas do banco de dados
+for chave in [
+    "CANAL_PAINEL_FUNCIONARIOS",
+    "CANAL_REGISTRO",
+    "ROLE_FUNCIONARIOS",
+    "ROLE_GERENCIA",
+    "ROLE_INICIAL",
+    "ROLE_REGISTRADO",
+]:
+    valor = db.get_config(chave)
+    if valor is not None:
+        globals()[chave] = int(valor)
+
 def verificar_permissao(interaction: discord.Interaction, comando: str) -> bool:
     """Verifica se o usuário possui cargos necessários para o comando."""
     role_ids = [role.id for role in interaction.user.roles]
@@ -27,6 +40,11 @@ def verificar_permissao(interaction: discord.Interaction, comando: str) -> bool:
     # Funcionários possuem acesso limitado
     if ROLE_FUNCIONARIOS in role_ids:
         return comando in PERMISSOES_FUNCIONARIOS
+
+    # Permissões dinâmicas por comando
+    permissoes = db.get_command_permissions(comando)
+    if any(role_id in permissoes for role_id in role_ids):
+        return True
 
     return False
 
@@ -111,6 +129,79 @@ async def on_member_join(member: discord.Member):
     role = member.guild.get_role(ROLE_INICIAL)
     if role:
         await member.add_roles(role)
+
+# Comandos de configuração
+@bot.tree.command(name="config_canal", description="Define um canal utilizado pelo bot")
+@app_commands.describe(tipo="Canal a configurar", canal="Novo canal")
+@app_commands.choices(tipo=[
+    app_commands.Choice(name="Painel de Funcionários", value="CANAL_PAINEL_FUNCIONARIOS"),
+    app_commands.Choice(name="Registro", value="CANAL_REGISTRO"),
+])
+async def config_canal(interaction: discord.Interaction, tipo: str, canal: discord.TextChannel):
+    if not verificar_permissao(interaction, "config_canal"):
+        embed = criar_embed_erro("Sem Permissão", "Você não tem permissão para executar este comando.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        return
+
+    db.set_config(tipo, str(canal.id))
+    globals()[tipo] = canal.id
+
+    nomes = {
+        "CANAL_PAINEL_FUNCIONARIOS": "Painel de Funcionários",
+        "CANAL_REGISTRO": "Registro",
+    }
+    embed = criar_embed_sucesso("Configuração Atualizada", f"{nomes[tipo]} definido para {canal.mention}.")
+    await interaction.response.send_message(embed=embed)
+
+
+@bot.tree.command(name="config_cargo", description="Define um cargo utilizado pelo bot")
+@app_commands.describe(tipo="Cargo a configurar", cargo="Novo cargo")
+@app_commands.choices(tipo=[
+    app_commands.Choice(name="Funcionários", value="ROLE_FUNCIONARIOS"),
+    app_commands.Choice(name="Gerência", value="ROLE_GERENCIA"),
+    app_commands.Choice(name="Inicial", value="ROLE_INICIAL"),
+    app_commands.Choice(name="Registrado", value="ROLE_REGISTRADO"),
+])
+async def config_cargo(interaction: discord.Interaction, tipo: str, cargo: discord.Role):
+    if not verificar_permissao(interaction, "config_cargo"):
+        embed = criar_embed_erro("Sem Permissão", "Você não tem permissão para executar este comando.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        return
+
+    db.set_config(tipo, str(cargo.id))
+    globals()[tipo] = cargo.id
+
+    nomes = {
+        "ROLE_FUNCIONARIOS": "Funcionários",
+        "ROLE_GERENCIA": "Gerência",
+        "ROLE_INICIAL": "Cargo Inicial",
+        "ROLE_REGISTRADO": "Cargo Registrado",
+    }
+    embed = criar_embed_sucesso("Configuração Atualizada", f"{nomes[tipo]} definido para {cargo.mention}.")
+    await interaction.response.send_message(embed=embed)
+
+
+@bot.tree.command(name="config_permissao", description="Gerencia permissões de cargos para comandos")
+@app_commands.describe(acao="Ação a realizar", comando="Nome do comando", cargo="Cargo alvo")
+@app_commands.choices(acao=[
+    app_commands.Choice(name="Adicionar", value="adicionar"),
+    app_commands.Choice(name="Remover", value="remover"),
+])
+async def config_permissao(interaction: discord.Interaction, acao: str, comando: str, cargo: discord.Role):
+    if not verificar_permissao(interaction, "config_permissao"):
+        embed = criar_embed_erro("Sem Permissão", "Você não tem permissão para executar este comando.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        return
+
+    if acao == "adicionar":
+        db.add_permission(comando, cargo.id)
+        mensagem = f"{cargo.mention} agora possui acesso ao comando `{comando}`."
+    else:
+        db.remove_permission(comando, cargo.id)
+        mensagem = f"{cargo.mention} não possui mais acesso ao comando `{comando}`."
+
+    embed = criar_embed_sucesso("Permissão Atualizada", mensagem)
+    await interaction.response.send_message(embed=embed)
 
 # Comando para exibir o painel de controle
 @bot.tree.command(name="painel", description="Exibe o painel de controle do Detran")

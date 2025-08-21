@@ -152,6 +152,11 @@ O bot usa os seguintes intents:
 - `/relatorio_multas_agente` - Relatório por agente
 - `/relatorio_cnhs_suspensas` - CNHs suspensas
 
+### Configuração
+- `/config_canal` - Define canais utilizados pelo bot
+- `/config_cargo` - Define cargos utilizados pelo bot
+- `/config_permissao` - Gerencia permissões de cargos para comandos
+
 ## 🔐 Sistema de Permissões
 
 ### Cargos e Permissões

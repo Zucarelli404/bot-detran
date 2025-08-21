@@ -117,6 +117,23 @@ class DetranDatabase:
                     FOREIGN KEY (jogador_id) REFERENCES players(rg_game)
                 )
             ''')
+
+            # Tabela de configuração geral
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS config (
+                    chave TEXT PRIMARY KEY,
+                    valor TEXT NOT NULL
+                )
+            ''')
+
+            # Tabela de permissões dinâmicas de comandos
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS command_permissions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    comando TEXT NOT NULL,
+                    role_id TEXT NOT NULL
+                )
+            ''')
             
             conn.commit()
             
@@ -450,10 +467,55 @@ class DetranDatabase:
             curso_id = curso[0]
             
             cursor.execute('''
-                UPDATE inscricoes_cursos 
+                UPDATE inscricoes_cursos
                 SET status = ?
                 WHERE jogador_id = ? AND curso_id = ?
             ''', (status, rg_game, curso_id))
             conn.commit()
             return cursor.rowcount > 0
+
+    # Métodos de configuração
+    def set_config(self, chave: str, valor: str) -> None:
+        """Define ou atualiza uma configuração do bot"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO config (chave, valor)
+                VALUES (?, ?)
+                ON CONFLICT(chave) DO UPDATE SET valor = excluded.valor
+            ''', (chave, valor))
+            conn.commit()
+
+    def get_config(self, chave: str) -> Optional[str]:
+        """Recupera o valor de uma configuração"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT valor FROM config WHERE chave = ?', (chave,))
+            row = cursor.fetchone()
+            return row[0] if row else None
+
+    # Métodos de permissões dinâmicas
+    def add_permission(self, comando: str, role_id: int) -> None:
+        """Adiciona permissão de um cargo a um comando"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT OR IGNORE INTO command_permissions (comando, role_id)
+                VALUES (?, ?)
+            ''', (comando, str(role_id)))
+            conn.commit()
+
+    def remove_permission(self, comando: str, role_id: int) -> None:
+        """Remove a permissão de um cargo para um comando"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM command_permissions WHERE comando = ? AND role_id = ?', (comando, str(role_id)))
+            conn.commit()
+
+    def get_command_permissions(self, comando: str) -> List[int]:
+        """Retorna lista de cargos autorizados para um comando"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT role_id FROM command_permissions WHERE comando = ?', (comando,))
+            return [int(row[0]) for row in cursor.fetchall()]
 
