@@ -38,6 +38,10 @@ Bot para Discord que administra e controla o Detran-SP de uma cidade de roleplay
 - Aprovação/reprovação de alunos
 - Controle de status dos cursos
 
+### 🎫 Sistema de Tickets
+- Abertura de tickets de suporte pelos usuários
+- Listagem e encerramento de tickets pela equipe
+
 ### 📊 Relatórios
 - Relatório de multas por agente
 - Lista de CNHs suspensas/revogadas
@@ -141,6 +145,11 @@ O bot usa os seguintes intents:
 - `/curso_inscrever` - Inscreve em curso
 - `/curso_aprovar` - Aprova aluno
 - `/curso_reprovar` - Reprova aluno
+
+### Tickets
+- `/ticket_criar` - Cria um ticket de suporte
+- `/ticket_listar` - Lista tickets por status
+- `/ticket_fechar` - Fecha um ticket de suporte
 
 ### Consultas
 - `/taxas` - Tabela de taxas

@@ -970,9 +970,55 @@ async def relatorio_cnhs_suspensas(interaction: discord.Interaction):
     
     if len(cnhs_problematicas) > 15:
         embed.add_field(name="⚠️ Aviso", value=f"Mostrando apenas 15 de {len(cnhs_problematicas)} CNHs.", inline=False)
-    
+
     embed.set_footer(text=f"Relatório gerado em {datetime.now().strftime('%d/%m/%Y %H:%M')}")
     await interaction.response.send_message(embed=embed)
+
+# Sistema de Tickets
+@bot.tree.command(name="ticket_criar", description="Cria um ticket de suporte")
+@app_commands.describe(descricao="Descreva seu problema")
+async def ticket_criar(interaction: discord.Interaction, descricao: str):
+    ticket_id = db.criar_ticket(str(interaction.user.id), descricao)
+    embed = criar_embed_sucesso("Ticket Criado", f"Ticket #{ticket_id} registrado com sucesso.")
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
+@bot.tree.command(name="ticket_listar", description="Lista tickets de suporte")
+@app_commands.describe(status="Filtrar por status")
+@app_commands.choices(status=[
+    app_commands.Choice(name="aberto", value="aberto"),
+    app_commands.Choice(name="fechado", value="fechado")
+])
+async def ticket_listar(interaction: discord.Interaction, status: str = "aberto"):
+    if not verificar_permissao(interaction, "ticket_listar"):
+        embed = criar_embed_erro("Sem Permissão", "Você não tem permissão para executar este comando.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        return
+
+    tickets = db.listar_tickets(status)
+    if tickets:
+        descricao = "\n".join([
+            f"ID {t['id']}: {t['descricao']} (Autor: <@{t['autor_id']}>)" for t in tickets
+        ])
+    else:
+        descricao = "Nenhum ticket encontrado."
+
+    embed = criar_embed_info("Tickets", descricao)
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
+@bot.tree.command(name="ticket_fechar", description="Fecha um ticket de suporte")
+@app_commands.describe(ticket_id="ID do ticket")
+async def ticket_fechar(interaction: discord.Interaction, ticket_id: int):
+    if not verificar_permissao(interaction, "ticket_fechar"):
+        embed = criar_embed_erro("Sem Permissão", "Você não tem permissão para executar este comando.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        return
+
+    if db.fechar_ticket(ticket_id):
+        embed = criar_embed_sucesso("Ticket Fechado", f"Ticket #{ticket_id} foi fechado.")
+    else:
+        embed = criar_embed_erro("Erro", f"Ticket #{ticket_id} não encontrado ou já fechado.")
+
+    await interaction.response.send_message(embed=embed, ephemeral=True)
 
 # Comando para executar o bot
 if __name__ == "__main__":

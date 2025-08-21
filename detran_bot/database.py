@@ -117,6 +117,17 @@ class DetranDatabase:
                     FOREIGN KEY (jogador_id) REFERENCES players(rg_game)
                 )
             ''')
+
+            # Tabela de tickets de suporte
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS tickets (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    autor_id TEXT NOT NULL,
+                    descricao TEXT NOT NULL,
+                    status TEXT DEFAULT 'aberto',
+                    data_criacao TEXT NOT NULL
+                )
+            ''')
             
             conn.commit()
             
@@ -454,6 +465,42 @@ class DetranDatabase:
                 SET status = ?
                 WHERE jogador_id = ? AND curso_id = ?
             ''', (status, rg_game, curso_id))
+            conn.commit()
+            return cursor.rowcount > 0
+
+    # Métodos para Tickets de Suporte
+    def criar_ticket(self, autor_id: str, descricao: str) -> int:
+        """Cria um novo ticket de suporte"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            data_criacao = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            cursor.execute('''
+                INSERT INTO tickets (autor_id, descricao, data_criacao)
+                VALUES (?, ?, ?)
+            ''', (autor_id, descricao, data_criacao))
+            conn.commit()
+            return cursor.lastrowid
+
+    def listar_tickets(self, status: str = None) -> List[Dict[str, Any]]:
+        """Lista tickets de suporte, opcionalmente filtrados por status"""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            if status:
+                cursor.execute('SELECT * FROM tickets WHERE status = ?', (status,))
+            else:
+                cursor.execute('SELECT * FROM tickets')
+            return [dict(row) for row in cursor.fetchall()]
+
+    def fechar_ticket(self, ticket_id: int) -> bool:
+        """Fecha um ticket de suporte"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                UPDATE tickets
+                SET status = 'fechado'
+                WHERE id = ? AND status != 'fechado'
+            ''', (ticket_id,))
             conn.commit()
             return cursor.rowcount > 0
 
