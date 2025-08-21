@@ -7,6 +7,16 @@ DISCORD_TOKEN = os.environ.get("TOKEN", "SEU_TOKEN_AQUI")
 # IDs de cargos do Discord
 ROLE_FUNCIONARIOS = 1404275629427261490
 ROLE_GERENCIA = 1405260058224234637
+# Cargo atribuído automaticamente a novos membros
+ROLE_INICIAL = 1403835890803146865
+# Cargo concedido após registro no servidor
+ROLE_REGISTRADO = 1408159947015065630
+
+# IDs de canais do Discord
+# Canal onde o painel de controle será publicado
+CANAL_PAINEL_FUNCIONARIOS = 1408158616783163616
+# Canal onde novos membros devem se registrar
+CANAL_REGISTRO = 1403794454413967526
 
 # Configurações de permissões por cargo
 CARGOS_PERMISSOES = {

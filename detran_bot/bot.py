@@ -9,6 +9,7 @@ from config import *
 # Configuração dos intents
 intents = discord.Intents.default()
 intents.message_content = True
+intents.members = True
 
 # Inicialização do bot
 bot = commands.Bot(command_prefix='!', intents=intents)
@@ -55,6 +56,26 @@ def criar_embed_info(titulo: str, descricao: str) -> discord.Embed:
     )
     return embed
 
+
+class PainelFuncionarios(discord.ui.View):
+    """Painel com atalhos para os comandos principais."""
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(label="Registrar Jogador", style=discord.ButtonStyle.primary)
+    async def registrar_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message(
+            "Use o comando /registrar_jogador para registrar um novo jogador.",
+            ephemeral=True
+        )
+
+    @discord.ui.button(label="Emitir CNH", style=discord.ButtonStyle.secondary)
+    async def cnh_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message(
+            "Use o comando /cnh_emitir para emitir uma CNH.",
+            ephemeral=True
+        )
+
 @bot.event
 async def on_ready():
     print(f'{bot.user} está online!')
@@ -64,14 +85,32 @@ async def on_ready():
     except Exception as e:
         print(f'Erro ao sincronizar comandos: {e}')
 
+    bot.add_view(PainelFuncionarios())
+    canal = bot.get_channel(CANAL_PAINEL_FUNCIONARIOS)
+    if canal:
+        embed = discord.Embed(
+            title="Painel de Controle",
+            description="Utilize os botões abaixo para acessar funções rápidas.",
+            color=CORES["info"]
+        )
+        await canal.send(embed=embed, view=PainelFuncionarios())
+
+
+@bot.event
+async def on_member_join(member: discord.Member):
+    """Atribui cargo inicial aos novos membros."""
+    role = member.guild.get_role(ROLE_INICIAL)
+    if role:
+        await member.add_roles(role)
+
 # Comandos de Registro e CNH
-@bot.tree.command(name="registrar", description="Registra um novo jogador no sistema do Detran")
+@bot.tree.command(name="registrar_jogador", description="Registra um novo jogador no sistema do Detran")
 @app_commands.describe(
     rg_game="RG do jogador no jogo (ex: UTC58846)",
     nome_rp="Nome do jogador no roleplay",
     telefone="Telefone do jogador (opcional)"
 )
-async def registrar(interaction: discord.Interaction, rg_game: str, nome_rp: str, telefone: str = None):
+async def registrar_jogador(interaction: discord.Interaction, rg_game: str, nome_rp: str, telefone: str = None):
     if not verificar_permissao(interaction, "registrar"):
         embed = criar_embed_erro("Sem Permissão", "Você não tem permissão para executar este comando.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
@@ -86,6 +125,32 @@ async def registrar(interaction: discord.Interaction, rg_game: str, nome_rp: str
         embed = criar_embed_erro("Erro no Registro", f"Jogador com RG {rg_game} já está registrado.")
     
     await interaction.response.send_message(embed=embed)
+
+
+@bot.tree.command(name="registrar", description="Registre-se no servidor do Detran")
+@app_commands.describe(nome="Seu nome no jogo", rg="Seu RG no jogo")
+async def registrar(interaction: discord.Interaction, nome: str, rg: str):
+    if interaction.channel_id != CANAL_REGISTRO:
+        embed = criar_embed_erro("Canal incorreto", "Use este comando no canal de registro.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        return
+
+    guild = interaction.guild
+    role_registrado = guild.get_role(ROLE_REGISTRADO)
+    role_inicial = guild.get_role(ROLE_INICIAL)
+
+    try:
+        await interaction.user.edit(nick=f"{nome} | {rg}")
+    except discord.Forbidden:
+        pass
+
+    if role_registrado:
+        await interaction.user.add_roles(role_registrado)
+    if role_inicial:
+        await interaction.user.remove_roles(role_inicial)
+
+    embed = criar_embed_sucesso("Registro concluído", f"Bem-vindo, {nome}!")
+    await interaction.response.send_message(embed=embed, ephemeral=True)
 
 @bot.tree.command(name="cnh_emitir", description="Emite uma nova CNH para um jogador")
 @app_commands.describe(
