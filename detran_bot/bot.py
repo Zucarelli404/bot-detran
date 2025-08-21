@@ -15,13 +15,18 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 db = DetranDatabase()
 
 def verificar_permissao(interaction: discord.Interaction, comando: str) -> bool:
-    """Verifica se o usuário tem permissão para executar o comando"""
-    membro = db.get_membro_detran(str(interaction.user.id))
-    if not membro:
-        return False
-    
-    cargo = membro['cargo']
-    return comando in CARGOS_PERMISSOES.get(cargo, [])
+    """Verifica se o usuário possui cargos necessários para o comando."""
+    role_ids = [role.id for role in interaction.user.roles]
+
+    # Gerência tem acesso total
+    if ROLE_GERENCIA in role_ids:
+        return True
+
+    # Funcionários possuem acesso limitado
+    if ROLE_FUNCIONARIOS in role_ids:
+        return comando in PERMISSOES_FUNCIONARIOS
+
+    return False
 
 def criar_embed_erro(titulo: str, descricao: str) -> discord.Embed:
     """Cria um embed de erro"""
