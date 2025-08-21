@@ -103,6 +103,21 @@ async def on_member_join(member: discord.Member):
     if role:
         await member.add_roles(role)
 
+# Comando para exibir o painel de controle
+@bot.tree.command(name="painel", description="Exibe o painel de controle do Detran")
+async def painel(interaction: discord.Interaction):
+    if not verificar_permissao(interaction, "painel"):
+        embed = criar_embed_erro("Sem Permissão", "Você não tem permissão para executar este comando.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        return
+
+    embed = discord.Embed(
+        title="Painel de Controle",
+        description="Utilize os botões abaixo para acessar funções rápidas.",
+        color=CORES["info"]
+    )
+    await interaction.response.send_message(embed=embed, view=PainelFuncionarios(), ephemeral=True)
+
 # Comandos de Registro e CNH
 @bot.tree.command(name="registrar_jogador", description="Registra um novo jogador no sistema do Detran")
 @app_commands.describe(

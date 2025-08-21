@@ -21,18 +21,18 @@ CANAL_REGISTRO = 1403794454413967526
 # Configurações de permissões por cargo
 CARGOS_PERMISSOES = {
     "Diretor": [
-        "registrar", "cnh_emitir", "cnh_renovar", "cnh_suspender", "cnh_cassar",
+        "painel", "registrar", "cnh_emitir", "cnh_renovar", "cnh_suspender", "cnh_cassar",
         "membro_adicionar", "membro_remover", "veiculo_registrar", "veiculo_transferir",
         "veiculo_apreender", "veiculo_liberar", "multar", "multa_pagar", "multa_recorrer",
         "curso_inscrever", "curso_aprovar", "curso_reprovar", "blitz_iniciar", "blitz_finalizar",
         "relatorios"
     ],
     "Instrutor": [
-        "registrar", "cnh_emitir", "cnh_renovar", "veiculo_registrar", "veiculo_transferir",
+        "painel", "registrar", "cnh_emitir", "cnh_renovar", "veiculo_registrar", "veiculo_transferir",
         "curso_inscrever", "curso_aprovar", "curso_reprovar"
     ],
     "Agente": [
-        "veiculo_apreender", "veiculo_liberar", "multar", "blitz_iniciar", "blitz_finalizar"
+        "painel", "veiculo_apreender", "veiculo_liberar", "multar", "blitz_iniciar", "blitz_finalizar"
     ]
 }
 
