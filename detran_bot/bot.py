@@ -63,14 +63,22 @@ class PainelFuncionarios(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="Registrar Jogador", style=discord.ButtonStyle.primary)
+    @discord.ui.button(
+        label="Registrar Jogador",
+        style=discord.ButtonStyle.primary,
+        custom_id="painel_registrar_jogador"
+    )
     async def registrar_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_message(
             "Use o comando /registrar_jogador para registrar um novo jogador.",
             ephemeral=True
         )
 
-    @discord.ui.button(label="Emitir CNH", style=discord.ButtonStyle.secondary)
+    @discord.ui.button(
+        label="Emitir CNH",
+        style=discord.ButtonStyle.secondary,
+        custom_id="painel_emitir_cnh"
+    )
     async def cnh_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_message(
             "Use o comando /cnh_emitir para emitir uma CNH.",
