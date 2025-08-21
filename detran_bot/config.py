@@ -4,6 +4,10 @@
 import os
 DISCORD_TOKEN = os.environ.get("TOKEN", "SEU_TOKEN_AQUI")
 
+# IDs de cargos do Discord
+ROLE_FUNCIONARIOS = 1404275629427261490
+ROLE_GERENCIA = 1405260058224234637
+
 # Configurações de permissões por cargo
 CARGOS_PERMISSOES = {
     "Diretor": [
@@ -21,6 +25,14 @@ CARGOS_PERMISSOES = {
         "veiculo_apreender", "veiculo_liberar", "multar", "blitz_iniciar", "blitz_finalizar"
     ]
 }
+
+# Comandos permitidos para o cargo padrão de funcionários
+PERMISSOES_FUNCIONARIOS = list({
+    comando
+    for cargo, comandos in CARGOS_PERMISSOES.items()
+    if cargo != "Diretor"
+    for comando in comandos
+})
 
 # Tabela de infrações e multas (baseada no documento oficial)
 TABELA_INFRACOES = {
