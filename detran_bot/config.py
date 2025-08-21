@@ -25,14 +25,15 @@ CARGOS_PERMISSOES = {
         "membro_adicionar", "membro_remover", "veiculo_registrar", "veiculo_transferir",
         "veiculo_apreender", "veiculo_liberar", "multar", "multa_pagar", "multa_recorrer",
         "curso_inscrever", "curso_aprovar", "curso_reprovar", "blitz_iniciar", "blitz_finalizar",
-        "relatorios"
+        "relatorios", "ticket_listar", "ticket_fechar"
     ],
     "Instrutor": [
         "painel", "registrar", "cnh_emitir", "cnh_renovar", "veiculo_registrar", "veiculo_transferir",
-        "curso_inscrever", "curso_aprovar", "curso_reprovar"
+        "curso_inscrever", "curso_aprovar", "curso_reprovar", "ticket_listar", "ticket_fechar"
     ],
     "Agente": [
-        "painel", "veiculo_apreender", "veiculo_liberar", "multar", "blitz_iniciar", "blitz_finalizar"
+        "painel", "veiculo_apreender", "veiculo_liberar", "multar", "blitz_iniciar", "blitz_finalizar",
+        "ticket_listar", "ticket_fechar"
     ]
 }
 
