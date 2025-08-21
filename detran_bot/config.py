@@ -44,57 +44,243 @@ PERMISSOES_FUNCIONARIOS = list({
     for comando in comandos
 })
 
-# Tabela de infrações e multas (baseada no documento oficial)
+# Tabela de infrações e multas
+# Valores em dinheiro virtual do servidor
 TABELA_INFRACOES = {
-    "excesso_velocidade_leve": {
-        "descricao": "Excesso de velocidade até 20 km/h acima do limite",
-        "valor": 150.0,
-        "pontos": 3
+    # Capítulo I – Infrações Leves
+    "estacionamento_proibido": {
+        "descricao": "Estacionamento em local proibido (calçada, faixa, garagem)",
+        "valor": 2000.0,
+        "pontos": 3,
+        "patio": 1
     },
-    "excesso_velocidade_medio": {
-        "descricao": "Excesso de velocidade entre 21 e 40 km/h acima do limite",
-        "valor": 300.0,
-        "pontos": 5
+    "nao_uso_cinto": {
+        "descricao": "Não utilização do cinto de segurança",
+        "valor": 2000.0,
+        "pontos": 3,
+        "patio": 1
     },
-    "excesso_velocidade_grave": {
-        "descricao": "Excesso de velocidade acima de 40 km/h do limite",
-        "valor": 600.0,
-        "pontos": 7
+    "abandono_veiculo": {
+        "descricao": "Abandono de veículo em área inadequada",
+        "valor": 2500.0,
+        "pontos": 3,
+        "patio": 1
     },
-    "conducao_sem_cnh": {
-        "descricao": "Dirigir sem habilitação ou com CNH vencida",
-        "valor": 800.0,
-        "pontos": 7
+    "poluicao_sonora": {
+        "descricao": "Poluição sonora (ex: som alto, escapamento modificado)",
+        "valor": 2500.0,
+        "pontos": 3,
+        "patio": 1
     },
-    "documentacao_irregular": {
-        "descricao": "Veículo com documentação irregular ou vencida",
-        "valor": 400.0,
-        "pontos": 5
+    "avancar_sinal_vermelho": {
+        "descricao": "Avançar sinal vermelho",
+        "valor": 3000.0,
+        "pontos": 3,
+        "patio": 1
+    },
+    "trafegar_contramao": {
+        "descricao": "Trafegar na contramão",
+        "valor": 3500.0,
+        "pontos": 3,
+        "patio": 1
+    },
+    "excesso_velocidade_ate_20": {
+        "descricao": "Excesso de velocidade (até 20% acima do limite)",
+        "valor": 3500.0,
+        "pontos": 3,
+        "patio": 1
+    },
+    "farois_desligados_noite": {
+        "descricao": "Conduzir veículo com faróis desligados à noite",
+        "valor": 3500.0,
+        "pontos": 3,
+        "patio": 1
+    },
+    "sem_documentos_veiculo": {
+        "descricao": "Dirigir sem os documentos do veículo",
+        "valor": 4000.0,
+        "pontos": 3,
+        "patio": 1
+    },
+    "nao_uso_capacete": {
+        "descricao": "Não uso de capacete (motocicleta)",
+        "valor": 4000.0,
+        "pontos": 3,
+        "patio": 1
+    },
+
+    # Capítulo II – Infrações Médias
+    "excesso_velocidade_acima_20": {
+        "descricao": "Excesso de velocidade grave (acima de 20% do limite)",
+        "valor": 5000.0,
+        "pontos": 4,
+        "patio": 1
+    },
+    "transporte_irregular_passageiros": {
+        "descricao": "Transporte irregular de passageiros ou carga",
+        "valor": 6000.0,
+        "pontos": 4,
+        "patio": 1
+    },
+    "ultrapassagem_perigosa": {
+        "descricao": "Ultrapassagem perigosa (curvas, faixa contínua)",
+        "valor": 6500.0,
+        "pontos": 4,
+        "patio": 1
+    },
+    "direcao_perigosa_sem_abordagem": {
+        "descricao": "Direção perigosa sem abordagem policial",
+        "valor": 7000.0,
+        "pontos": 4,
+        "patio": 1
+    },
+    "fuga_blitz": {
+        "descricao": "Fuga de blitz sem perseguição policial",
+        "valor": 8000.0,
+        "pontos": 4,
+        "patio": 1
+    },
+    "farois_lanternas_adulterados": {
+        "descricao": "Veículo com faróis ou lanternas adulteradas (xenônio ilegal)",
+        "valor": 8000.0,
+        "pontos": 4,
+        "patio": 1
+    },
+    "uso_indevido_giroflex": {
+        "descricao": "Uso indevido de giroflex ou sirene",
+        "valor": 8000.0,
+        "pontos": 4,
+        "patio": 1
+    },
+    "cnh_vencida_suspensa": {
+        "descricao": "Dirigir com CNH vencida ou suspensa",
+        "valor": 9000.0,
+        "pontos": 4,
+        "patio": 1
+    },
+    "sem_placa_adulterada": {
+        "descricao": "Veículo sem placa ou com placa adulterada",
+        "valor": 9000.0,
+        "pontos": 4,
+        "patio": 1
+    },
+    "excesso_velocidade_rodovia_40": {
+        "descricao": "Excesso de velocidade em rodovia (acima de 40% do limite)",
+        "valor": 9000.0,
+        "pontos": 4,
+        "patio": 1
+    },
+
+    # Capítulo III – Infrações Graves
+    "alcool_ou_drogas": {
+        "descricao": "Condução sob influência de álcool ou drogas",
+        "valor": 12000.0,
+        "pontos": 5,
+        "patio": 4
     },
     "recusa_bafometro": {
-        "descricao": "Recusar ou fugir de teste de alcoolemia (Lei Seca)",
-        "valor": 1000.0,
-        "pontos": 10
+        "descricao": "Recusa ao teste do bafômetro",
+        "valor": 12000.0,
+        "pontos": 5,
+        "patio": 4
     },
-    "direcao_perigosa": {
-        "descricao": "Dirigir de forma perigosa, colocando terceiros em risco",
-        "valor": 900.0,
-        "pontos": 7
+    "fuga_perseguicao": {
+        "descricao": "Fuga de abordagem policial com perseguição",
+        "valor": 15000.0,
+        "pontos": 5,
+        "patio": 4
     },
-    "estacionamento_proibido": {
-        "descricao": "Estacionar em local não autorizado",
-        "valor": 200.0,
-        "pontos": 3
+    "direcao_perigosa_perseguicao": {
+        "descricao": "Direção perigosa durante perseguição policial",
+        "valor": 15000.0,
+        "pontos": 5,
+        "patio": 4
     },
-    "sem_capacete": {
-        "descricao": "Conduzir moto sem capacete de segurança",
-        "valor": 350.0,
-        "pontos": 5
+    "racha": {
+        "descricao": "Participação em racha ou corrida ilegal",
+        "valor": 15000.0,
+        "pontos": 5,
+        "patio": 4
     },
-    "transporte_irregular": {
-        "descricao": "Violar regras de transporte de carga ou passageiros",
-        "valor": 700.0,
-        "pontos": 7
+    "transporte_produto_ilicito": {
+        "descricao": "Transporte de produto ilícito (drogas, contrabando)",
+        "valor": 16000.0,
+        "pontos": 5,
+        "patio": 4
+    },
+    "obstrucao_via_publica": {
+        "descricao": "Obstrução intencional de via pública",
+        "valor": 16000.0,
+        "pontos": 5,
+        "patio": 4
+    },
+    "forcar_passagem_bloqueio": {
+        "descricao": "Forçar passagem em bloqueio policial",
+        "valor": 17000.0,
+        "pontos": 5,
+        "patio": 4
+    },
+    "resistencia_desacato": {
+        "descricao": "Resistência ou desacato em abordagem veicular",
+        "valor": 18000.0,
+        "pontos": 5,
+        "patio": 4
+    },
+    "fuga_crime_leve": {
+        "descricao": "Utilização de veículo em fuga de crime leve",
+        "valor": 19000.0,
+        "pontos": 5,
+        "patio": 4
+    },
+
+    # Capítulo IV – Infrações Gravíssimas
+    "veiculo_em_assalto": {
+        "descricao": "Uso de veículo em assalto",
+        "valor": 20000.0,
+        "pontos": 7,
+        "patio": 24
+    },
+    "transporte_armas": {
+        "descricao": "Transporte de armas ilegais no veículo",
+        "valor": 22000.0,
+        "pontos": 7,
+        "patio": 24
+    },
+    "transporte_refem": {
+        "descricao": "Transporte de refém em veículo",
+        "valor": 25000.0,
+        "pontos": 7,
+        "patio": 24
+    },
+    "fuga_troca_tiros_pm": {
+        "descricao": "Fuga com troca de tiros contra a Polícia Militar",
+        "valor": 27000.0,
+        "pontos": 7,
+        "patio": 24
+    },
+    "veiculo_sequestro": {
+        "descricao": "Veículo utilizado em sequestro",
+        "valor": 28000.0,
+        "pontos": 7,
+        "patio": 24
+    },
+    "veiculo_blindado_clonado": {
+        "descricao": "Condução de veículo fortemente blindado ou clonado",
+        "valor": 28000.0,
+        "pontos": 7,
+        "patio": 24
+    },
+    "fuga_com_refem": {
+        "descricao": "Utilização de veículo em fuga com refém",
+        "valor": 30000.0,
+        "pontos": 7,
+        "patio": 24
+    },
+    "veiculo_atentado_autoridades": {
+        "descricao": "Utilização de veículo em atentado contra autoridades",
+        "valor": 30000.0,
+        "pontos": 7,
+        "patio": 24
     }
 }
 
