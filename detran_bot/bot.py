@@ -6,7 +6,7 @@ from datetime import datetime
 import sqlite3
 from database import DetranDatabase, DB_PATH
 from config import *
-from utils import verificar_permissao, criar_embed
+from utils import verificar_permissao, criar_embed, enviar_log
 
 # Configuração dos intents
 intents = discord.Intents.default()
@@ -204,6 +204,8 @@ async def on_ready():
     except Exception as e:
         print(f'Erro ao sincronizar comandos: {e}')
 
+    await enviar_log(bot, "Bot iniciado e online.")
+
     bot.add_view(PainelFuncionarios())
     bot.add_view(PainelRegistro())
     bot.add_view(PainelTickets())
@@ -256,6 +258,23 @@ async def on_ready():
             color=CORES["info"]
         )
         await canal_sugestoes.send(embed=embed, view=PainelSugestao())
+
+
+@bot.event
+async def on_app_command_completion(interaction: discord.Interaction, command: app_commands.Command):
+    await enviar_log(bot, f"Comando /{command.name} executado por {interaction.user} ({interaction.user.id})")
+
+
+@bot.tree.error
+async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+    await enviar_log(bot, (
+        f"Erro ao executar /{interaction.command.name} por {interaction.user} ({interaction.user.id}): {error}"
+    ))
+    embed = criar_embed("erro", "Erro", "Ocorreu um erro ao executar o comando.")
+    try:
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+    except Exception:
+        pass
 
 
 @bot.event
