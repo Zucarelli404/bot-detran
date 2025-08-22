@@ -18,24 +18,232 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 db = DetranDatabase(db_path=DB_PATH)
 
 
-class ComandoModal(discord.ui.Modal):
-    """Modal genérico apresentado ao pressionar um botão do painel."""
-
-    def __init__(self, titulo: str):
-        super().__init__(title=titulo)
-        self.informacoes = discord.ui.TextInput(
-            label="Informações",
-            style=discord.TextStyle.paragraph,
-            placeholder="Insira os dados necessários",
-            required=False,
+async def registrar_jogador_flow(interaction: discord.Interaction, rg_game: str, nome_rp: str, telefone: str = None):
+    if not verificar_permissao(interaction, "registrar"):
+        embed = criar_embed("erro", "Sem Permissão", "Você não tem permissão para executar este comando.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        return
+    if db.registrar_player(rg_game, nome_rp, telefone):
+        embed = criar_embed(
+            "sucesso",
+            "Jogador Registrado",
+            f"**RG:** {rg_game}\n**Nome:** {nome_rp}\n**Telefone:** {telefone or 'Não informado'}",
         )
-        self.add_item(self.informacoes)
+    else:
+        embed = criar_embed("erro", "Erro no Registro", f"Jogador com RG {rg_game} já está registrado.")
+    await interaction.response.send_message(embed=embed)
+
+
+async def cnh_emitir_flow(interaction: discord.Interaction, rg_game: str, categoria: str, nome_rp: str = None):
+    if not verificar_permissao(interaction, "cnh_emitir"):
+        embed = criar_embed("erro", "Sem Permissão", "Você não tem permissão para executar este comando.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        return
+    player = db.get_player(rg_game)
+    if not player:
+        if nome_rp:
+            db.registrar_player(rg_game, nome_rp)
+            player = db.get_player(rg_game)
+        else:
+            embed = criar_embed("erro", "Jogador Não Encontrado", f"Jogador com RG {rg_game} não registrado. Informe o nome para registrá-lo.")
+            await interaction.response.send_message(embed=embed)
+            return
+    numero_registro = db.emitir_cnh(rg_game, categoria)
+    embed = criar_embed(
+        "sucesso",
+        "CNH Emitida",
+        f"**Jogador:** {player['nome_rp']}\n**RG:** {rg_game}\n**Categoria:** {categoria}\n**Número:** {numero_registro}",
+    )
+    await interaction.response.send_message(embed=embed)
+
+
+async def cnh_consultar_flow(interaction: discord.Interaction, rg_game: str):
+    player = db.get_player(rg_game)
+    if not player:
+        embed = criar_embed("erro", "Jogador Não Encontrado", f"Não foi encontrado jogador com RG {rg_game}.")
+        await interaction.response.send_message(embed=embed)
+        return
+    cnhs = db.get_cnhs_jogador(rg_game)
+    embed = discord.Embed(
+        title=f"📋 Consulta CNH - {player['nome_rp']}",
+        color=CORES["info"]
+    )
+    embed.add_field(name="RG", value=rg_game, inline=True)
+    embed.add_field(name="Status CNH", value=player['cnh_status'].title(), inline=True)
+    embed.add_field(name="Pontos", value=f"{player['pontos_cnh']}/30", inline=True)
+    if cnhs:
+        categorias = ", ".join([cnh['categoria'] for cnh in cnhs])
+        embed.add_field(name="Categorias", value=categorias, inline=False)
+        for cnh in cnhs:
+            embed.add_field(
+                name=f"CNH {cnh['categoria']}",
+                value=f"**Número:** {cnh['numero_registro']}\n**Emissão:** {cnh['data_emissao']}\n**Validade:** {cnh['data_validade']}",
+                inline=True
+            )
+    else:
+        embed.add_field(name="CNHs", value="Nenhuma CNH emitida", inline=False)
+    await interaction.response.send_message(embed=embed)
+
+
+async def veiculo_registrar_flow(interaction: discord.Interaction, rg_game: str, placa: str, modelo: str, cor: str, ano: int, chassi: str):
+    if not verificar_permissao(interaction, "veiculo_registrar"):
+        embed = criar_embed("erro", "Sem Permissão", "Você não tem permissão para executar este comando.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        return
+    player = db.get_player(rg_game)
+    if not player:
+        embed = criar_embed("erro", "Proprietário Não Encontrado", f"Não foi encontrado jogador com RG {rg_game}.")
+        await interaction.response.send_message(embed=embed)
+        return
+    if db.registrar_veiculo(rg_game, placa.upper(), modelo, cor, ano, chassi):
+        embed = criar_embed(
+            "sucesso",
+            "Veículo Registrado",
+            f"**Proprietário:** {player['nome_rp']}\n**Placa:** {placa.upper()}\n**Modelo:** {modelo}\n**Cor:** {cor}\n**Ano:**{ano}"
+        )
+    else:
+        embed = criar_embed("erro", "Erro no Registro", f"Veículo com placa {placa.upper()} já está registrado.")
+    await interaction.response.send_message(embed=embed)
+
+
+async def multar_flow(interaction: discord.Interaction, rg_game: str, tipo_infracao: str, placa_veiculo: str = None):
+    if not verificar_permissao(interaction, "multar"):
+        embed = criar_embed("erro", "Sem Permissão", "Você não tem permissão para executar este comando.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        return
+    player = db.get_player(rg_game)
+    if not player:
+        embed = criar_embed("erro", "Jogador Não Encontrado", f"Não foi encontrado jogador com RG {rg_game}.")
+        await interaction.response.send_message(embed=embed)
+        return
+    if placa_veiculo:
+        veiculo = db.get_veiculo(placa_veiculo.upper())
+        if not veiculo:
+            embed = criar_embed("erro", "Veículo Não Encontrado", f"Não foi encontrado veículo com placa {placa_veiculo.upper()}.")
+            await interaction.response.send_message(embed=embed)
+            return
+        placa_veiculo = placa_veiculo.upper()
+    infracao = TABELA_INFRACOES.get(tipo_infracao)
+    if not infracao:
+        embed = criar_embed("erro", "Infração Inválida", "O código de infração informado não existe.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        return
+    multa_id = db.aplicar_multa(
+        rg_game,
+        infracao['descricao'],
+        infracao['valor'],
+        infracao['pontos'],
+        str(interaction.user.id),
+        placa_veiculo
+    )
+    player_atualizado = db.get_player(rg_game)
+    with sqlite3.connect(db.db_path) as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT valor FROM multas WHERE id = ?', (multa_id,))
+        valor_aplicado = cursor.fetchone()[0]
+        reincidencia = valor_aplicado > infracao['valor']
+    valor_desconto = valor_aplicado * 0.85
+    embed = discord.Embed(
+        title="🚨 Multa Aplicada",
+        color=CORES["aviso"]
+    )
+    embed.add_field(name="Jogador", value=f"{player['nome_rp']} ({rg_game})", inline=True)
+    embed.add_field(name="Infração", value=infracao['descricao'], inline=False)
+    embed.add_field(name="Valor", value=f"R$ {valor_aplicado:.2f}", inline=True)
+    embed.add_field(name="Valor com desconto", value=f"R$ {valor_desconto:.2f}", inline=True)
+    embed.add_field(name="Pontos", value=infracao['pontos'], inline=True)
+    embed.add_field(name="Pátio", value=f"{infracao['patio']}h", inline=True)
+    embed.add_field(name="Agente", value=interaction.user.mention, inline=True)
+    if placa_veiculo:
+        embed.add_field(name="Veículo", value=placa_veiculo, inline=True)
+    if reincidencia:
+        embed.add_field(name="⚠️ Reincidência", value="Multa aplicada em dobro", inline=False)
+    embed.add_field(name="Pontos Atuais", value=f"{player_atualizado['pontos_cnh']}/30", inline=True)
+    embed.add_field(name="Status CNH", value=player_atualizado['cnh_status'].title(), inline=True)
+    embed.add_field(name="ID da Multa", value=multa_id, inline=True)
+    if player_atualizado['cnh_status'] == 'suspensa':
+        embed.add_field(name="🚫 CNH Suspensa", value="CNH suspensa automaticamente por excesso de pontos", inline=False)
+    elif player_atualizado['cnh_status'] == 'revogada':
+        embed.add_field(name="❌ CNH Revogada", value="CNH revogada automaticamente por excesso de pontos", inline=False)
+    await interaction.response.send_message(embed=embed)
+
+
+async def ticket_criar_flow(interaction: discord.Interaction, descricao: str):
+    ticket_id = db.criar_ticket(str(interaction.user.id), descricao)
+    embed = criar_embed("sucesso", "Ticket Criado", f"Ticket #{ticket_id} registrado com sucesso.")
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
+
+class RegistrarJogadorModal(discord.ui.Modal, title="Registrar Jogador"):
+    rg_game = discord.ui.TextInput(label="RG do jogador")
+    nome_rp = discord.ui.TextInput(label="Nome RP")
+    telefone = discord.ui.TextInput(label="Telefone", required=False)
 
     async def on_submit(self, interaction: discord.Interaction):
-        await interaction.response.send_message(
-            f"Modal '{self.title}' enviado.",
-            ephemeral=True,
+        await registrar_jogador_flow(interaction, self.rg_game.value, self.nome_rp.value, self.telefone.value or None)
+
+
+class EmitirCNHModal(discord.ui.Modal, title="Emitir CNH"):
+    rg_game = discord.ui.TextInput(label="RG do jogador")
+    categoria = discord.ui.TextInput(label="Categoria (A, B, C, D, E, Náutica, Aérea)")
+    nome_rp = discord.ui.TextInput(label="Nome RP (se não registrado)", required=False)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        await cnh_emitir_flow(interaction, self.rg_game.value, self.categoria.value, self.nome_rp.value or None)
+
+
+class ConsultarCNHModal(discord.ui.Modal, title="Consultar CNH"):
+    rg_game = discord.ui.TextInput(label="RG do jogador")
+
+    async def on_submit(self, interaction: discord.Interaction):
+        await cnh_consultar_flow(interaction, self.rg_game.value)
+
+
+class RegistrarVeiculoModal(discord.ui.Modal, title="Registrar Veículo"):
+    rg_game = discord.ui.TextInput(label="RG do proprietário")
+    placa = discord.ui.TextInput(label="Placa do veículo")
+    modelo = discord.ui.TextInput(label="Modelo")
+    cor = discord.ui.TextInput(label="Cor")
+    ano = discord.ui.TextInput(label="Ano")
+    chassi = discord.ui.TextInput(label="Chassi")
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            ano_int = int(self.ano.value)
+        except ValueError:
+            embed = criar_embed("erro", "Ano inválido", "O ano deve ser um número.")
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            return
+        await veiculo_registrar_flow(
+            interaction,
+            self.rg_game.value,
+            self.placa.value,
+            self.modelo.value,
+            self.cor.value,
+            ano_int,
+            self.chassi.value,
         )
+
+
+class AplicarMultaModal(discord.ui.Modal, title="Aplicar Multa"):
+    rg_game = discord.ui.TextInput(label="RG do jogador")
+    tipo_infracao = discord.ui.TextInput(label="Código da infração")
+    placa_veiculo = discord.ui.TextInput(label="Placa do veículo", required=False)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        await multar_flow(
+            interaction,
+            self.rg_game.value,
+            self.tipo_infracao.value,
+            self.placa_veiculo.value or None,
+        )
+
+
+class AbrirTicketModal(discord.ui.Modal, title="Abrir Ticket"):
+    descricao = discord.ui.TextInput(label="Descreva seu problema", style=discord.TextStyle.long)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        await ticket_criar_flow(interaction, self.descricao.value)
 
 
 class PainelFuncionarios(discord.ui.View):
@@ -49,7 +257,7 @@ class PainelFuncionarios(discord.ui.View):
         custom_id="painel_registrar_jogador"
     )
     async def registrar_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_modal(ComandoModal("Registrar Jogador"))
+        await interaction.response.send_modal(RegistrarJogadorModal())
 
     @discord.ui.button(
         label="Emitir CNH",
@@ -57,7 +265,7 @@ class PainelFuncionarios(discord.ui.View):
         custom_id="painel_emitir_cnh"
     )
     async def cnh_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_modal(ComandoModal("Emitir CNH"))
+        await interaction.response.send_modal(EmitirCNHModal())
 
     @discord.ui.button(
         label="Consultar CNH",
@@ -65,7 +273,7 @@ class PainelFuncionarios(discord.ui.View):
         custom_id="painel_consultar_cnh"
     )
     async def cnh_consultar_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_modal(ComandoModal("Consultar CNH"))
+        await interaction.response.send_modal(ConsultarCNHModal())
 
     @discord.ui.button(
         label="Registrar Veículo",
@@ -73,7 +281,7 @@ class PainelFuncionarios(discord.ui.View):
         custom_id="painel_registrar_veiculo"
     )
     async def veiculo_registrar_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_modal(ComandoModal("Registrar Veículo"))
+        await interaction.response.send_modal(RegistrarVeiculoModal())
 
     @discord.ui.button(
         label="Aplicar Multa",
@@ -81,7 +289,7 @@ class PainelFuncionarios(discord.ui.View):
         custom_id="painel_aplicar_multa"
     )
     async def multar_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_modal(ComandoModal("Aplicar Multa"))
+        await interaction.response.send_modal(AplicarMultaModal())
 
     @discord.ui.button(
         label="Abrir Ticket",
@@ -90,7 +298,7 @@ class PainelFuncionarios(discord.ui.View):
         row=1
     )
     async def ticket_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_modal(ComandoModal("Abrir Ticket"))
+        await interaction.response.send_modal(AbrirTicketModal())
 
 
 class RegistroModal(discord.ui.Modal, title="Registro"):
@@ -303,20 +511,7 @@ async def painel(interaction: discord.Interaction):
     telefone="Telefone do jogador (opcional)"
 )
 async def registrar_jogador(interaction: discord.Interaction, rg_game: str, nome_rp: str, telefone: str = None):
-    if not verificar_permissao(interaction, "registrar"):
-        embed = criar_embed("erro", "Sem Permissão", "Você não tem permissão para executar este comando.")
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-        return
-    
-    if db.registrar_player(rg_game, nome_rp, telefone):
-        embed = criar_embed("sucesso", 
-            "Jogador Registrado",
-            f"**RG:** {rg_game}\n**Nome:** {nome_rp}\n**Telefone:** {telefone or 'Não informado'}"
-        )
-    else:
-        embed = criar_embed("erro", "Erro no Registro", f"Jogador com RG {rg_game} já está registrado.")
-    
-    await interaction.response.send_message(embed=embed)
+    await registrar_jogador_flow(interaction, rg_game, nome_rp, telefone)
 
 
 @bot.tree.command(name="registrar", description="Registre-se no servidor do Detran")
@@ -360,61 +555,12 @@ async def registrar(interaction: discord.Interaction, nome: str, rg: str):
     app_commands.Choice(name="Aérea", value="Aérea")
 ])
 async def cnh_emitir(interaction: discord.Interaction, rg_game: str, categoria: str, nome_rp: str = None):
-    if not verificar_permissao(interaction, "cnh_emitir"):
-        embed = criar_embed("erro", "Sem Permissão", "Você não tem permissão para executar este comando.")
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-        return
-
-    player = db.get_player(rg_game)
-    if not player:
-        if nome_rp:
-            db.registrar_player(rg_game, nome_rp)
-            player = db.get_player(rg_game)
-        else:
-            embed = criar_embed("erro", "Jogador Não Encontrado", f"Jogador com RG {rg_game} não registrado. Informe o nome para registrá-lo.")
-            await interaction.response.send_message(embed=embed)
-            return
-    
-    numero_registro = db.emitir_cnh(rg_game, categoria)
-    embed = criar_embed("sucesso", 
-        "CNH Emitida",
-        f"**Jogador:** {player['nome_rp']}\n**RG:** {rg_game}\n**Categoria:** {categoria}\n**Número:** {numero_registro}"
-    )
-    await interaction.response.send_message(embed=embed)
+    await cnh_emitir_flow(interaction, rg_game, categoria, nome_rp)
 
 @bot.tree.command(name="cnh_consultar", description="Consulta o status e detalhes da CNH de um jogador")
 @app_commands.describe(rg_game="RG do jogador no jogo")
 async def cnh_consultar(interaction: discord.Interaction, rg_game: str):
-    player = db.get_player(rg_game)
-    if not player:
-        embed = criar_embed("erro", "Jogador Não Encontrado", f"Não foi encontrado jogador com RG {rg_game}.")
-        await interaction.response.send_message(embed=embed)
-        return
-    
-    cnhs = db.get_cnhs_jogador(rg_game)
-    
-    embed = discord.Embed(
-        title=f"📋 Consulta CNH - {player['nome_rp']}",
-        color=CORES["info"]
-    )
-    embed.add_field(name="RG", value=rg_game, inline=True)
-    embed.add_field(name="Status CNH", value=player['cnh_status'].title(), inline=True)
-    embed.add_field(name="Pontos", value=f"{player['pontos_cnh']}/30", inline=True)
-    
-    if cnhs:
-        categorias = ", ".join([cnh['categoria'] for cnh in cnhs])
-        embed.add_field(name="Categorias", value=categorias, inline=False)
-        
-        for cnh in cnhs:
-            embed.add_field(
-                name=f"CNH {cnh['categoria']}",
-                value=f"**Número:** {cnh['numero_registro']}\n**Emissão:** {cnh['data_emissao']}\n**Validade:** {cnh['data_validade']}",
-                inline=True
-            )
-    else:
-        embed.add_field(name="CNHs", value="Nenhuma CNH emitida", inline=False)
-    
-    await interaction.response.send_message(embed=embed)
+    await cnh_consultar_flow(interaction, rg_game)
 
 @bot.tree.command(name="cnh_suspender", description="Suspende a CNH de um jogador")
 @app_commands.describe(
@@ -479,26 +625,7 @@ async def cnh_cassar(interaction: discord.Interaction, rg_game: str):
     chassi="Chassi do veículo"
 )
 async def veiculo_registrar(interaction: discord.Interaction, rg_game: str, placa: str, modelo: str, cor: str, ano: int, chassi: str):
-    if not verificar_permissao(interaction, "veiculo_registrar"):
-        embed = criar_embed("erro", "Sem Permissão", "Você não tem permissão para executar este comando.")
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-        return
-    
-    player = db.get_player(rg_game)
-    if not player:
-        embed = criar_embed("erro", "Proprietário Não Encontrado", f"Não foi encontrado jogador com RG {rg_game}.")
-        await interaction.response.send_message(embed=embed)
-        return
-    
-    if db.registrar_veiculo(rg_game, placa.upper(), modelo, cor, ano, chassi):
-        embed = criar_embed("sucesso", 
-            "Veículo Registrado",
-            f"**Proprietário:** {player['nome_rp']}\n**Placa:** {placa.upper()}\n**Modelo:** {modelo}\n**Cor:** {cor}\n**Ano:** {ano}"
-        )
-    else:
-        embed = criar_embed("erro", "Erro no Registro", f"Veículo com placa {placa.upper()} já está registrado.")
-    
-    await interaction.response.send_message(embed=embed)
+    await veiculo_registrar_flow(interaction, rg_game, placa, modelo, cor, ano, chassi)
 
 @bot.tree.command(name="veiculo_consultar", description="Consulta os detalhes de um veículo")
 @app_commands.describe(placa="Placa do veículo")
@@ -620,80 +747,7 @@ async def veiculo_liberar(interaction: discord.Interaction, placa: str):
     placa_veiculo="Placa do veículo (opcional)"
 )
 async def multar(interaction: discord.Interaction, rg_game: str, tipo_infracao: str, placa_veiculo: str = None):
-    if not verificar_permissao(interaction, "multar"):
-        embed = criar_embed("erro", "Sem Permissão", "Você não tem permissão para executar este comando.")
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-        return
-    
-    player = db.get_player(rg_game)
-    if not player:
-        embed = criar_embed("erro", "Jogador Não Encontrado", f"Não foi encontrado jogador com RG {rg_game}.")
-        await interaction.response.send_message(embed=embed)
-        return
-    
-    if placa_veiculo:
-        veiculo = db.get_veiculo(placa_veiculo.upper())
-        if not veiculo:
-            embed = criar_embed("erro", "Veículo Não Encontrado", f"Não foi encontrado veículo com placa {placa_veiculo.upper()}.")
-            await interaction.response.send_message(embed=embed)
-            return
-        placa_veiculo = placa_veiculo.upper()
-    
-    infracao = TABELA_INFRACOES.get(tipo_infracao)
-    if not infracao:
-        embed = criar_embed("erro", "Infração Inválida", "O código de infração informado não existe.")
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-        return
-    multa_id = db.aplicar_multa(
-        rg_game, 
-        infracao['descricao'], 
-        infracao['valor'], 
-        infracao['pontos'], 
-        str(interaction.user.id), 
-        placa_veiculo
-    )
-    
-    # Verificar se houve reincidência
-    player_atualizado = db.get_player(rg_game)
-
-    # Verificar se foi multa em dobro por reincidência
-    with sqlite3.connect(db.db_path) as conn:
-        cursor = conn.cursor()
-        cursor.execute('SELECT valor FROM multas WHERE id = ?', (multa_id,))
-        valor_aplicado = cursor.fetchone()[0]
-        reincidencia = valor_aplicado > infracao['valor']
-
-    valor_desconto = valor_aplicado * 0.85
-    
-    embed = discord.Embed(
-        title="🚨 Multa Aplicada",
-        color=CORES["aviso"]
-    )
-    embed.add_field(name="Jogador", value=f"{player['nome_rp']} ({rg_game})", inline=True)
-    embed.add_field(name="Infração", value=infracao['descricao'], inline=False)
-    embed.add_field(name="Valor", value=f"R$ {valor_aplicado:.2f}", inline=True)
-    embed.add_field(name="Valor com desconto", value=f"R$ {valor_desconto:.2f}", inline=True)
-    embed.add_field(name="Pontos", value=infracao['pontos'], inline=True)
-    embed.add_field(name="Pátio", value=f"{infracao['patio']}h", inline=True)
-    embed.add_field(name="Agente", value=interaction.user.mention, inline=True)
-    
-    if placa_veiculo:
-        embed.add_field(name="Veículo", value=placa_veiculo, inline=True)
-    
-    if reincidencia:
-        embed.add_field(name="⚠️ Reincidência", value="Multa aplicada em dobro", inline=False)
-    
-    embed.add_field(name="Pontos Atuais", value=f"{player_atualizado['pontos_cnh']}/30", inline=True)
-    embed.add_field(name="Status CNH", value=player_atualizado['cnh_status'].title(), inline=True)
-    embed.add_field(name="ID da Multa", value=multa_id, inline=True)
-    
-    # Avisos sobre status da CNH
-    if player_atualizado['cnh_status'] == 'suspensa':
-        embed.add_field(name="🚫 CNH Suspensa", value="CNH suspensa automaticamente por excesso de pontos", inline=False)
-    elif player_atualizado['cnh_status'] == 'revogada':
-        embed.add_field(name="❌ CNH Revogada", value="CNH revogada automaticamente por excesso de pontos", inline=False)
-    
-    await interaction.response.send_message(embed=embed)
+    await multar_flow(interaction, rg_game, tipo_infracao, placa_veiculo)
 
 
 @multar.autocomplete("tipo_infracao")
@@ -963,9 +1017,7 @@ async def relatorio_cnhs_suspensas(interaction: discord.Interaction):
 @bot.tree.command(name="ticket_criar", description="Cria um ticket de suporte")
 @app_commands.describe(descricao="Descreva seu problema")
 async def ticket_criar(interaction: discord.Interaction, descricao: str):
-    ticket_id = db.criar_ticket(str(interaction.user.id), descricao)
-    embed = criar_embed("sucesso", "Ticket Criado", f"Ticket #{ticket_id} registrado com sucesso.")
-    await interaction.response.send_message(embed=embed, ephemeral=True)
+    await ticket_criar_flow(interaction, descricao)
 
 @bot.tree.command(name="ticket_listar", description="Lista tickets de suporte")
 @app_commands.describe(status="Filtrar por status")
