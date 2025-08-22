@@ -130,6 +130,109 @@ class PainelFuncionarios(discord.ui.View):
             ephemeral=True
         )
 
+
+class RegistroModal(discord.ui.Modal, title="Registro"):
+    nome = discord.ui.TextInput(label="Nome no jogo")
+    rg = discord.ui.TextInput(label="RG no jogo")
+
+    async def on_submit(self, interaction: discord.Interaction):
+        guild = interaction.guild
+        role_registrado = guild.get_role(ROLE_REGISTRADO)
+        role_inicial = guild.get_role(ROLE_INICIAL)
+        try:
+            await interaction.user.edit(nick=f"{self.nome.value} | {self.rg.value}")
+        except discord.Forbidden:
+            pass
+        if role_registrado:
+            await interaction.user.add_roles(role_registrado)
+        if role_inicial:
+            await interaction.user.remove_roles(role_inicial)
+        embed = criar_embed_sucesso("Registro concluído", f"Bem-vindo, {self.nome.value}!")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+
+class PainelRegistro(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(label="Registrar-se", style=discord.ButtonStyle.primary, custom_id="painel_registro")
+    async def registrar(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(RegistroModal())
+
+
+class PainelTickets(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(label="Abrir Ticket", style=discord.ButtonStyle.primary, custom_id="painel_ticket_abrir")
+    async def abrir_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
+        ticket_id = db.criar_ticket(str(interaction.user.id), "Ticket aberto via painel")
+        guild = interaction.guild
+        categoria = guild.get_channel(CATEGORIA_TICKETS)
+        overwrites = {
+            guild.default_role: discord.PermissionOverwrite(view_channel=False),
+            interaction.user: discord.PermissionOverwrite(view_channel=True, send_messages=True)
+        }
+        func = guild.get_role(ROLE_FUNCIONARIOS)
+        ger = guild.get_role(ROLE_GERENCIA)
+        if func:
+            overwrites[func] = discord.PermissionOverwrite(view_channel=True, send_messages=True)
+        if ger:
+            overwrites[ger] = discord.PermissionOverwrite(view_channel=True, send_messages=True)
+        canal = await guild.create_text_channel(f"ticket-{ticket_id}", category=categoria, overwrites=overwrites)
+        await canal.send(f"{interaction.user.mention}, descreva seu problema.")
+        embed = criar_embed_sucesso("Ticket Criado", f"Seu ticket foi aberto: {canal.mention}")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+
+class PainelCursos(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(label="Listar Cursos", style=discord.ButtonStyle.secondary, custom_id="painel_cursos_listar")
+    async def listar(self, interaction: discord.Interaction, button: discord.ui.Button):
+        cursos = db.listar_cursos()
+        if cursos:
+            embed = discord.Embed(title="Cursos Disponíveis", color=CORES["info"])
+            for curso in cursos:
+                embed.add_field(
+                    name=curso['nome_curso'],
+                    value=f"Teoria: {curso['carga_horaria_teorica']}min\nPrática: {curso['carga_horaria_pratica']}min",
+                    inline=False
+                )
+        else:
+            embed = criar_embed_info("Cursos", "Nenhum curso cadastrado.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+
+class SugestaoModal(discord.ui.Modal, title="Enviar Sugestão"):
+    sugestao = discord.ui.TextInput(label="Sua sugestão", style=discord.TextStyle.long)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        sugestao_id = db.criar_sugestao(str(interaction.user.id), self.sugestao.value)
+        canal = bot.get_channel(CANAL_SUGESTOES)
+        embed = discord.Embed(
+            title=f"Sugestão #{sugestao_id}",
+            description=self.sugestao.value,
+            color=CORES["info"]
+        )
+        embed.set_footer(text=f"Enviado por {interaction.user}")
+        if canal:
+            await canal.send(embed=embed)
+        await interaction.response.send_message(
+            embed=criar_embed_sucesso("Sugestão enviada", f"Sugestão #{sugestao_id} registrada."),
+            ephemeral=True
+        )
+
+
+class PainelSugestao(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(label="Enviar Sugestão", style=discord.ButtonStyle.primary, custom_id="painel_sugestao_enviar")
+    async def enviar(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(SugestaoModal())
+
 @bot.event
 async def on_ready():
     print(f'{bot.user} está online!')
@@ -140,6 +243,11 @@ async def on_ready():
         print(f'Erro ao sincronizar comandos: {e}')
 
     bot.add_view(PainelFuncionarios())
+    bot.add_view(PainelRegistro())
+    bot.add_view(PainelTickets())
+    bot.add_view(PainelCursos())
+    bot.add_view(PainelSugestao())
+
     canal = bot.get_channel(CANAL_PAINEL_FUNCIONARIOS)
     if canal:
         embed = discord.Embed(
@@ -150,6 +258,42 @@ async def on_ready():
         embed.set_footer(text="Detran-SP Bot")
         embed.set_thumbnail(url=bot.user.display_avatar.url)
         await canal.send(embed=embed, view=PainelFuncionarios())
+
+    canal_registro = bot.get_channel(CANAL_REGISTRO)
+    if canal_registro:
+        embed = discord.Embed(
+            title="Registro",
+            description="Clique no botão para se registrar.",
+            color=CORES["info"]
+        )
+        await canal_registro.send(embed=embed, view=PainelRegistro())
+
+    canal_ticket = bot.get_channel(CANAL_TICKETS)
+    if canal_ticket:
+        embed = discord.Embed(
+            title="Suporte",
+            description="Clique no botão para abrir um ticket.",
+            color=CORES["info"]
+        )
+        await canal_ticket.send(embed=embed, view=PainelTickets())
+
+    canal_cursos = bot.get_channel(CANAL_CURSOS)
+    if canal_cursos:
+        embed = discord.Embed(
+            title="Painel de Cursos",
+            description="Veja os cursos disponíveis.",
+            color=CORES["info"]
+        )
+        await canal_cursos.send(embed=embed, view=PainelCursos())
+
+    canal_sugestoes = bot.get_channel(CANAL_SUGESTOES)
+    if canal_sugestoes:
+        embed = discord.Embed(
+            title="Sugestões",
+            description="Envie suas sugestões pelo botão abaixo.",
+            color=CORES["info"]
+        )
+        await canal_sugestoes.send(embed=embed, view=PainelSugestao())
 
 
 @bot.event
@@ -228,7 +372,8 @@ async def registrar(interaction: discord.Interaction, nome: str, rg: str):
 @bot.tree.command(name="cnh_emitir", description="Emite uma nova CNH para um jogador")
 @app_commands.describe(
     rg_game="RG do jogador no jogo",
-    categoria="Categoria da CNH (A, B, C, D, E, Náutica, Aérea)"
+    categoria="Categoria da CNH (A, B, C, D, E, Náutica, Aérea)",
+    nome_rp="Nome do jogador caso não esteja registrado"
 )
 @app_commands.choices(categoria=[
     app_commands.Choice(name="A - Motocicletas", value="A"),
@@ -239,17 +384,21 @@ async def registrar(interaction: discord.Interaction, nome: str, rg: str):
     app_commands.Choice(name="Náutica", value="Náutica"),
     app_commands.Choice(name="Aérea", value="Aérea")
 ])
-async def cnh_emitir(interaction: discord.Interaction, rg_game: str, categoria: str):
+async def cnh_emitir(interaction: discord.Interaction, rg_game: str, categoria: str, nome_rp: str = None):
     if not verificar_permissao(interaction, "cnh_emitir"):
         embed = criar_embed_erro("Sem Permissão", "Você não tem permissão para executar este comando.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
-    
+
     player = db.get_player(rg_game)
     if not player:
-        embed = criar_embed_erro("Jogador Não Encontrado", f"Não foi encontrado jogador com RG {rg_game}.")
-        await interaction.response.send_message(embed=embed)
-        return
+        if nome_rp:
+            db.registrar_player(rg_game, nome_rp)
+            player = db.get_player(rg_game)
+        else:
+            embed = criar_embed_erro("Jogador Não Encontrado", f"Jogador com RG {rg_game} não registrado. Informe o nome para registrá-lo.")
+            await interaction.response.send_message(embed=embed)
+            return
     
     numero_registro = db.emitir_cnh(rg_game, categoria)
     embed = criar_embed_sucesso(
@@ -1088,6 +1237,24 @@ async def ticket_fechar(interaction: discord.Interaction, ticket_id: int):
         embed = criar_embed_erro("Erro", f"Ticket #{ticket_id} não encontrado ou já fechado.")
 
     await interaction.response.send_message(embed=embed, ephemeral=True)
+
+
+@bot.tree.command(name="aviso", description="Envia um aviso para o canal de avisos")
+@app_commands.describe(mensagem="Conteúdo do aviso")
+async def aviso(interaction: discord.Interaction, mensagem: str):
+    if not verificar_permissao(interaction, "aviso"):
+        embed = criar_embed_erro("Sem Permissão", "Você não tem permissão para executar este comando.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        return
+
+    canal = bot.get_channel(CANAL_AVISOS)
+    if canal:
+        embed = discord.Embed(title="📢 Aviso", description=mensagem, color=CORES["info"])
+        await canal.send(embed=embed)
+        resposta = criar_embed_sucesso("Aviso enviado", f"Aviso publicado em {canal.mention}.")
+    else:
+        resposta = criar_embed_erro("Erro", "Canal de avisos não encontrado.")
+    await interaction.response.send_message(embed=resposta, ephemeral=True)
 
 # Comando para executar o bot
 if __name__ == "__main__":
