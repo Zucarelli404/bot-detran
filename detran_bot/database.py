@@ -130,6 +130,16 @@ class DetranDatabase:
                     data_criacao TEXT NOT NULL
                 )
             ''')
+
+            # Tabela de sugestões
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS sugestoes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    autor_id TEXT NOT NULL,
+                    sugestao TEXT NOT NULL,
+                    data_criacao TEXT NOT NULL
+                )
+            ''')
             
             conn.commit()
             
@@ -269,7 +279,7 @@ class DetranDatabase:
         """Emite uma nova CNH para um jogador"""
         numero_registro = f"CNH{rg_game}{categoria}{datetime.now().strftime('%Y%m%d')}"
         data_emissao = datetime.now().strftime('%Y-%m-%d')
-        data_validade = (datetime.now() + timedelta(days=1825)).strftime('%Y-%m-%d')  # 5 anos
+        data_validade = (datetime.now() + timedelta(days=15)).strftime('%Y-%m-%d')  # 15 dias
         
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
@@ -505,4 +515,17 @@ class DetranDatabase:
             ''', (ticket_id,))
             conn.commit()
             return cursor.rowcount > 0
+
+    # Métodos para Sugestões
+    def criar_sugestao(self, autor_id: str, sugestao: str) -> int:
+        """Registra uma nova sugestão"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            data_criacao = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            cursor.execute('''
+                INSERT INTO sugestoes (autor_id, sugestao, data_criacao)
+                VALUES (?, ?, ?)
+            ''', (autor_id, sugestao, data_criacao))
+            conn.commit()
+            return cursor.lastrowid
 

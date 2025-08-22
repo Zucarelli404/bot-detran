@@ -17,6 +17,19 @@ ROLE_REGISTRADO = 1408159947015065630
 CANAL_PAINEL_FUNCIONARIOS = 1408158616783163616
 # Canal onde novos membros devem se registrar
 CANAL_REGISTRO = 1403794454413967526
+"""
+Novos canais e categorias utilizados pelo bot.
+"""
+# Canal para painel de tickets
+CANAL_TICKETS = 1408251485824880742
+# Categoria onde os tickets serão criados
+CATEGORIA_TICKETS = 1408251716398223472
+# Canal para painel de cursos
+CANAL_CURSOS = 1405644809741406380
+# Canal para painel de sugestões
+CANAL_SUGESTOES = 1405306477333446736
+# Canal onde avisos serão publicados
+CANAL_AVISOS = 1405643532126916809
 
 # Configurações de permissões por cargo
 CARGOS_PERMISSOES = {
@@ -25,7 +38,7 @@ CARGOS_PERMISSOES = {
         "membro_adicionar", "membro_remover", "veiculo_registrar", "veiculo_transferir",
         "veiculo_apreender", "veiculo_liberar", "multar", "multa_pagar", "multa_recorrer",
         "curso_inscrever", "curso_aprovar", "curso_reprovar", "blitz_iniciar", "blitz_finalizar",
-        "relatorios", "ticket_listar", "ticket_fechar"
+        "relatorios", "ticket_listar", "ticket_fechar", "aviso"
     ],
     "Instrutor": [
         "painel", "registrar", "cnh_emitir", "cnh_renovar", "veiculo_registrar", "veiculo_transferir",
