@@ -85,6 +85,51 @@ class PainelFuncionarios(discord.ui.View):
             ephemeral=True
         )
 
+    @discord.ui.button(
+        label="Consultar CNH",
+        style=discord.ButtonStyle.secondary,
+        custom_id="painel_consultar_cnh"
+    )
+    async def cnh_consultar_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message(
+            "Use o comando /cnh_consultar para consultar uma CNH.",
+            ephemeral=True
+        )
+
+    @discord.ui.button(
+        label="Registrar Veículo",
+        style=discord.ButtonStyle.success,
+        custom_id="painel_registrar_veiculo"
+    )
+    async def veiculo_registrar_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message(
+            "Use o comando /veiculo_registrar para registrar um veículo.",
+            ephemeral=True
+        )
+
+    @discord.ui.button(
+        label="Aplicar Multa",
+        style=discord.ButtonStyle.danger,
+        custom_id="painel_aplicar_multa"
+    )
+    async def multar_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message(
+            "Use o comando /multar para aplicar uma multa.",
+            ephemeral=True
+        )
+
+    @discord.ui.button(
+        label="Abrir Ticket",
+        style=discord.ButtonStyle.secondary,
+        custom_id="painel_ticket",
+        row=1
+    )
+    async def ticket_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message(
+            "Use o comando /ticket_criar para abrir um ticket de suporte.",
+            ephemeral=True
+        )
+
 @bot.event
 async def on_ready():
     print(f'{bot.user} está online!')
@@ -102,6 +147,8 @@ async def on_ready():
             description="Utilize os botões abaixo para acessar funções rápidas.",
             color=CORES["info"]
         )
+        embed.set_footer(text="Detran-SP Bot")
+        embed.set_thumbnail(url=bot.user.display_avatar.url)
         await canal.send(embed=embed, view=PainelFuncionarios())
 
 
@@ -125,6 +172,8 @@ async def painel(interaction: discord.Interaction):
         description="Utilize os botões abaixo para acessar funções rápidas.",
         color=CORES["info"]
     )
+    embed.set_footer(text="Detran-SP Bot")
+    embed.set_thumbnail(url=bot.user.display_avatar.url)
     await interaction.response.send_message(embed=embed, view=PainelFuncionarios(), ephemeral=True)
 
 # Comandos de Registro e CNH
