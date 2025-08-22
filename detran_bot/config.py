@@ -21,13 +21,12 @@ CANAL_REGISTRO = 1403794454413967526
 Novos canais e categorias utilizados pelo bot.
 """
 # Canal para painel de tickets
+# Canal para painel de tickets
 CANAL_TICKETS = 1408251485824880742
 # Categoria onde os tickets serão criados
 CATEGORIA_TICKETS = 1408251716398223472
-# Canal para painel de cursos
-CANAL_CURSOS = 1405644809741406380
 # Canal para painel de sugestões
-CANAL_SUGESTOES = 1405306477333446736
+CANAL_SUGESTOES = 1408255731395727511
 # Canal onde avisos serão publicados
 CANAL_AVISOS = 1405643532126916809
 
@@ -35,14 +34,13 @@ CANAL_AVISOS = 1405643532126916809
 CARGOS_PERMISSOES = {
     "Diretor": [
         "painel", "registrar", "cnh_emitir", "cnh_renovar", "cnh_suspender", "cnh_cassar",
-        "membro_adicionar", "membro_remover", "veiculo_registrar", "veiculo_transferir",
-        "veiculo_apreender", "veiculo_liberar", "multar", "multa_pagar", "multa_recorrer",
-        "curso_inscrever", "curso_aprovar", "curso_reprovar", "blitz_iniciar", "blitz_finalizar",
+        "veiculo_registrar", "veiculo_transferir", "veiculo_apreender", "veiculo_liberar",
+        "multar", "multa_pagar", "multa_recorrer", "blitz_iniciar", "blitz_finalizar",
         "relatorios", "ticket_listar", "ticket_fechar", "aviso"
     ],
     "Instrutor": [
         "painel", "registrar", "cnh_emitir", "cnh_renovar", "veiculo_registrar", "veiculo_transferir",
-        "curso_inscrever", "curso_aprovar", "curso_reprovar", "ticket_listar", "ticket_fechar"
+        "ticket_listar", "ticket_fechar"
     ],
     "Agente": [
         "painel", "veiculo_apreender", "veiculo_liberar", "multar", "blitz_iniciar", "blitz_finalizar",
@@ -308,10 +306,6 @@ TABELA_TAXAS = {
         "descricao": "Renovação da CNH",
         "valor": 300.0
     },
-    "curso_reciclagem": {
-        "descricao": "Curso Obrigatório para Condutores Infratores",
-        "valor": 250.0
-    },
     "emissao_crlv": {
         "descricao": "Emissão de CRLV",
         "valor": 200.0
@@ -328,14 +322,6 @@ TABELA_TAXAS = {
         "descricao": "Taxa de Participação em Leilão de Veículo",
         "valor": 1500.0
     },
-    "curso_nautica": {
-        "descricao": "Curso para Habilitação Náutica",
-        "valor": 3500.0
-    },
-    "curso_aerea": {
-        "descricao": "Curso para Habilitação Aérea",
-        "valor": 5000.0
-    }
 }
 
 # Limites de pontuação da CNH
