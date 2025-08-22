@@ -4,7 +4,7 @@ from discord import app_commands
 import os
 from datetime import datetime
 import sqlite3
-from database import DetranDatabase
+from database import DetranDatabase, DB_PATH
 from config import *
 
 # Configuração dos intents
@@ -14,7 +14,7 @@ intents.members = True
 
 # Inicialização do bot
 bot = commands.Bot(command_prefix='!', intents=intents)
-db = DetranDatabase()
+db = DetranDatabase(db_path=DB_PATH)
 
 def verificar_permissao(interaction: discord.Interaction, comando: str) -> bool:
     """Verifica se o usuário possui cargos necessários para o comando."""
