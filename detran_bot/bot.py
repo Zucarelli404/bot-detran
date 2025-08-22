@@ -122,6 +122,20 @@ class PainelRegistro(discord.ui.View):
         await interaction.response.send_modal(RegistroModal())
 
 
+class TicketView(discord.ui.View):
+    def __init__(self, ticket_id: int):
+        super().__init__(timeout=None)
+        self.ticket_id = ticket_id
+
+    @discord.ui.button(label="Fechar Ticket", style=discord.ButtonStyle.danger, custom_id="ticket_fechar_view")
+    async def fechar(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if db.fechar_ticket(self.ticket_id):
+            await interaction.response.send_message("Ticket fechado.", ephemeral=True)
+            await interaction.channel.delete()
+        else:
+            await interaction.response.send_message("Não foi possível fechar o ticket.", ephemeral=True)
+
+
 class PainelTickets(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -142,29 +156,16 @@ class PainelTickets(discord.ui.View):
         if ger:
             overwrites[ger] = discord.PermissionOverwrite(view_channel=True, send_messages=True)
         canal = await guild.create_text_channel(f"ticket-{ticket_id}", category=categoria, overwrites=overwrites)
-        await canal.send(f"{interaction.user.mention}, descreva seu problema.")
+        embed_ticket = discord.Embed(
+            title=f"Ticket #{ticket_id}",
+            description=f"{interaction.user.mention}, descreva seu problema.",
+            color=CORES["info"]
+        )
+        await canal.send(embed=embed_ticket, view=TicketView(ticket_id))
         embed = criar_embed("sucesso", "Ticket Criado", f"Seu ticket foi aberto: {canal.mention}")
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
-class PainelCursos(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=None)
-
-    @discord.ui.button(label="Listar Cursos", style=discord.ButtonStyle.secondary, custom_id="painel_cursos_listar")
-    async def listar(self, interaction: discord.Interaction, button: discord.ui.Button):
-        cursos = db.listar_cursos()
-        if cursos:
-            embed = discord.Embed(title="Cursos Disponíveis", color=CORES["info"])
-            for curso in cursos:
-                embed.add_field(
-                    name=curso['nome_curso'],
-                    value=f"Teoria: {curso['carga_horaria_teorica']}min\nPrática: {curso['carga_horaria_pratica']}min",
-                    inline=False
-                )
-        else:
-            embed = criar_embed("info", "Cursos", "Nenhum curso cadastrado.")
-        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
 class SugestaoModal(discord.ui.Modal, title="Enviar Sugestão"):
@@ -180,7 +181,9 @@ class SugestaoModal(discord.ui.Modal, title="Enviar Sugestão"):
         )
         embed.set_footer(text=f"Enviado por {interaction.user}")
         if canal:
-            await canal.send(embed=embed)
+            mensagem = await canal.send(embed=embed)
+            await mensagem.add_reaction("✅")
+            await mensagem.add_reaction("❌")
         await interaction.response.send_message(
             embed=criar_embed("sucesso", "Sugestão enviada", f"Sugestão #{sugestao_id} registrada."),
             ephemeral=True
@@ -209,7 +212,6 @@ async def on_ready():
     bot.add_view(PainelFuncionarios())
     bot.add_view(PainelRegistro())
     bot.add_view(PainelTickets())
-    bot.add_view(PainelCursos())
     bot.add_view(PainelSugestao())
 
     canal = bot.get_channel(CANAL_PAINEL_FUNCIONARIOS)
@@ -241,14 +243,6 @@ async def on_ready():
         )
         await canal_ticket.send(embed=embed, view=PainelTickets())
 
-    canal_cursos = bot.get_channel(CANAL_CURSOS)
-    if canal_cursos:
-        embed = discord.Embed(
-            title="Painel de Cursos",
-            description="Veja os cursos disponíveis.",
-            color=CORES["info"]
-        )
-        await canal_cursos.send(embed=embed, view=PainelCursos())
 
     canal_sugestoes = bot.get_channel(CANAL_SUGESTOES)
     if canal_sugestoes:
@@ -474,83 +468,6 @@ async def cnh_cassar(interaction: discord.Interaction, rg_game: str):
     await interaction.response.send_message(embed=embed)
 
 # Comandos de Membros do Detran
-@bot.tree.command(name="membro_adicionar", description="Adiciona um membro à equipe do Detran")
-@app_commands.describe(
-    usuario="Usuário do Discord",
-    cargo="Cargo no Detran",
-    rg_game="RG do membro no jogo (opcional)"
-)
-@app_commands.choices(cargo=[
-    app_commands.Choice(name="Diretor", value="Diretor"),
-    app_commands.Choice(name="Instrutor", value="Instrutor"),
-    app_commands.Choice(name="Agente", value="Agente")
-])
-async def membro_adicionar(interaction: discord.Interaction, usuario: discord.Member, cargo: str, rg_game: str = None):
-    if not verificar_permissao(interaction, "membro_adicionar"):
-        embed = criar_embed("erro", "Sem Permissão", "Você não tem permissão para executar este comando.")
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-        return
-    
-    if db.adicionar_membro_detran(str(usuario.id), usuario.display_name, cargo, rg_game):
-        embed = criar_embed("sucesso", 
-            "Membro Adicionado",
-            f"**Usuário:** {usuario.mention}\n**Cargo:** {cargo}\n**RG:** {rg_game or 'Não informado'}"
-        )
-    else:
-        embed = criar_embed("erro", "Erro", f"Usuário {usuario.mention} já é membro do Detran.")
-    
-    await interaction.response.send_message(embed=embed)
-
-@bot.tree.command(name="membro_listar", description="Lista os membros do Detran")
-@app_commands.describe(cargo="Filtrar por cargo (opcional)")
-@app_commands.choices(cargo=[
-    app_commands.Choice(name="Diretor", value="Diretor"),
-    app_commands.Choice(name="Instrutor", value="Instrutor"),
-    app_commands.Choice(name="Agente", value="Agente")
-])
-async def membro_listar(interaction: discord.Interaction, cargo: str = None):
-    membros = db.listar_membros_detran(cargo)
-    
-    if not membros:
-        embed = criar_embed("info", "Lista de Membros", "Nenhum membro encontrado.")
-        await interaction.response.send_message(embed=embed)
-        return
-    
-    embed = discord.Embed(
-        title=f"👥 Membros do Detran{f' - {cargo}' if cargo else ''}",
-        color=CORES["detran"]
-    )
-    
-    for membro in membros:
-        try:
-            user = bot.get_user(int(membro['discord_id']))
-            nome = user.display_name if user else membro['nome_discord']
-        except:
-            nome = membro['nome_discord']
-        
-        embed.add_field(
-            name=f"{membro['cargo']} - {nome}",
-            value=f"**Discord ID:** {membro['discord_id']}\n**RG:** {membro['rg_game'] or 'Não informado'}",
-            inline=True
-        )
-    
-    await interaction.response.send_message(embed=embed)
-
-@bot.tree.command(name="membro_remover", description="Remove um membro da equipe do Detran")
-@app_commands.describe(usuario="Usuário do Discord")
-async def membro_remover(interaction: discord.Interaction, usuario: discord.Member):
-    if not verificar_permissao(interaction, "membro_remover"):
-        embed = criar_embed("erro", "Sem Permissão", "Você não tem permissão para executar este comando.")
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-        return
-    
-    if db.remover_membro_detran(str(usuario.id)):
-        embed = criar_embed("sucesso", "Membro Removido", f"Usuário {usuario.mention} foi removido da equipe do Detran.")
-    else:
-        embed = criar_embed("erro", "Erro", f"Usuário {usuario.mention} não é membro do Detran.")
-    
-    await interaction.response.send_message(embed=embed)
-
 # Comandos de Veículos
 @bot.tree.command(name="veiculo_registrar", description="Registra um novo veículo")
 @app_commands.describe(
@@ -877,137 +794,6 @@ async def multa_recorrer(interaction: discord.Interaction, multa_id: int):
     await interaction.response.send_message(embed=embed)
 
 # Comandos de Cursos
-@bot.tree.command(name="curso_listar", description="Lista todos os cursos disponíveis")
-async def curso_listar(interaction: discord.Interaction):
-    cursos = db.listar_cursos()
-    
-    embed = discord.Embed(
-        title="📚 Cursos Disponíveis - Detran-SP",
-        color=CORES["detran"]
-    )
-    
-    for curso in cursos:
-        embed.add_field(
-            name=curso['nome_curso'],
-            value=f"**Teoria:** {curso['carga_horaria_teorica']}min\n**Prática:** {curso['carga_horaria_pratica']}min\n**Requisitos:** {curso['requisitos_aprovacao']}",
-            inline=True
-        )
-    
-    await interaction.response.send_message(embed=embed)
-
-@bot.tree.command(name="curso_inscrever", description="Inscreve um jogador em um curso")
-@app_commands.describe(
-    rg_game="RG do jogador",
-    nome_curso="Nome do curso"
-)
-@app_commands.choices(nome_curso=[
-    app_commands.Choice(name="Licença A", value="Licença A"),
-    app_commands.Choice(name="Licença B", value="Licença B"),
-    app_commands.Choice(name="Licença C", value="Licença C"),
-    app_commands.Choice(name="Licença D", value="Licença D"),
-    app_commands.Choice(name="Licença E", value="Licença E"),
-    app_commands.Choice(name="Licença Náutica", value="Licença Náutica"),
-    app_commands.Choice(name="Licença Aérea", value="Licença Aérea")
-])
-async def curso_inscrever(interaction: discord.Interaction, rg_game: str, nome_curso: str):
-    if not verificar_permissao(interaction, "curso_inscrever"):
-        embed = criar_embed("erro", "Sem Permissão", "Você não tem permissão para executar este comando.")
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-        return
-    
-    player = db.get_player(rg_game)
-    if not player:
-        embed = criar_embed("erro", "Jogador Não Encontrado", f"Não foi encontrado jogador com RG {rg_game}.")
-        await interaction.response.send_message(embed=embed)
-        return
-    
-    if db.inscrever_em_curso(rg_game, nome_curso):
-        embed = criar_embed("sucesso", 
-            "Inscrição Realizada",
-            f"**Jogador:** {player['nome_rp']}\n**RG:** {rg_game}\n**Curso:** {nome_curso}\n**Instrutor:** {interaction.user.mention}"
-        )
-    else:
-        embed = criar_embed("erro", "Erro na Inscrição", "Não foi possível realizar a inscrição. Verifique se o jogador já está inscrito neste curso.")
-    
-    await interaction.response.send_message(embed=embed)
-
-@bot.tree.command(name="curso_aprovar", description="Marca um jogador como aprovado em um curso")
-@app_commands.describe(
-    rg_game="RG do jogador",
-    nome_curso="Nome do curso"
-)
-@app_commands.choices(nome_curso=[
-    app_commands.Choice(name="Licença A", value="Licença A"),
-    app_commands.Choice(name="Licença B", value="Licença B"),
-    app_commands.Choice(name="Licença C", value="Licença C"),
-    app_commands.Choice(name="Licença D", value="Licença D"),
-    app_commands.Choice(name="Licença E", value="Licença E"),
-    app_commands.Choice(name="Licença Náutica", value="Licença Náutica"),
-    app_commands.Choice(name="Licença Aérea", value="Licença Aérea")
-])
-async def curso_aprovar(interaction: discord.Interaction, rg_game: str, nome_curso: str):
-    if not verificar_permissao(interaction, "curso_aprovar"):
-        embed = criar_embed("erro", "Sem Permissão", "Você não tem permissão para executar este comando.")
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-        return
-    
-    player = db.get_player(rg_game)
-    if not player:
-        embed = criar_embed("erro", "Jogador Não Encontrado", f"Não foi encontrado jogador com RG {rg_game}.")
-        await interaction.response.send_message(embed=embed)
-        return
-    
-    if db.atualizar_status_curso(rg_game, nome_curso, "aprovado"):
-        embed = criar_embed("sucesso", 
-            "Aprovação Registrada",
-            f"**Jogador:** {player['nome_rp']}\n**RG:** {rg_game}\n**Curso:** {nome_curso}\n**Status:** Aprovado\n**Instrutor:** {interaction.user.mention}"
-        )
-        embed.add_field(name="📋 Próximo Passo", value="Use `/cnh_emitir` para emitir a CNH correspondente.", inline=False)
-    else:
-        embed = criar_embed("erro", "Erro", "Não foi possível registrar a aprovação. Verifique se o jogador está inscrito neste curso.")
-    
-    await interaction.response.send_message(embed=embed)
-
-@bot.tree.command(name="curso_reprovar", description="Marca um jogador como reprovado em um curso")
-@app_commands.describe(
-    rg_game="RG do jogador",
-    nome_curso="Nome do curso"
-)
-@app_commands.choices(nome_curso=[
-    app_commands.Choice(name="Licença A", value="Licença A"),
-    app_commands.Choice(name="Licença B", value="Licença B"),
-    app_commands.Choice(name="Licença C", value="Licença C"),
-    app_commands.Choice(name="Licença D", value="Licença D"),
-    app_commands.Choice(name="Licença E", value="Licença E"),
-    app_commands.Choice(name="Licença Náutica", value="Licença Náutica"),
-    app_commands.Choice(name="Licença Aérea", value="Licença Aérea")
-])
-async def curso_reprovar(interaction: discord.Interaction, rg_game: str, nome_curso: str):
-    if not verificar_permissao(interaction, "curso_reprovar"):
-        embed = criar_embed("erro", "Sem Permissão", "Você não tem permissão para executar este comando.")
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-        return
-    
-    player = db.get_player(rg_game)
-    if not player:
-        embed = criar_embed("erro", "Jogador Não Encontrado", f"Não foi encontrado jogador com RG {rg_game}.")
-        await interaction.response.send_message(embed=embed)
-        return
-    
-    if db.atualizar_status_curso(rg_game, nome_curso, "reprovado"):
-        embed = discord.Embed(
-            title="❌ Reprovação Registrada",
-            color=CORES["erro"]
-        )
-        embed.add_field(name="Jogador", value=f"{player['nome_rp']} ({rg_game})", inline=True)
-        embed.add_field(name="Curso", value=nome_curso, inline=True)
-        embed.add_field(name="Instrutor", value=interaction.user.mention, inline=True)
-        embed.add_field(name="📋 Próximo Passo", value="O jogador pode se inscrever novamente após 24h.", inline=False)
-    else:
-        embed = criar_embed("erro", "Erro", "Não foi possível registrar a reprovação. Verifique se o jogador está inscrito neste curso.")
-    
-    await interaction.response.send_message(embed=embed)
-
 # Comandos de Consulta Geral
 @bot.tree.command(name="taxas", description="Exibe a tabela de taxas de serviços")
 async def taxas(interaction: discord.Interaction):

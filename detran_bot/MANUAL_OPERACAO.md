@@ -9,13 +9,10 @@ Este manual descreve como usar o Bot Detran-SP para gerenciar as operações do 
 ## 🚀 Primeiros Passos
 
 ### 1. Verificar Permissões
-Antes de usar qualquer comando, certifique-se de que você está registrado como membro do Detran:
-```
-/membro_listar
-```
+Certifique-se de que você possui o cargo correto para executar o comando.
 
 ### 2. Comandos Básicos de Consulta
-Estes comandos podem ser usados por qualquer membro:
+Estes comandos podem ser usados por qualquer usuário:
 - `/taxas` - Ver tabela de taxas oficiais
 - `/infracoes` - Ver tabela de infrações e multas
 - `/pop` - Consultar Protocolo Operacional Padrão
@@ -23,28 +20,6 @@ Estes comandos podem ser usados por qualquer membro:
 
 ---
 
-## 👥 Gestão de Membros (Apenas Diretores)
-
-### Adicionar Novo Membro
-```
-/membro_adicionar @usuario Agente UTC58846
-```
-- **@usuario**: Mencione o usuário do Discord
-- **Cargo**: Diretor, Instrutor ou Agente
-- **RG**: RG do membro no jogo (opcional)
-
-### Listar Membros
-```
-/membro_listar Agente
-```
-Filtra por cargo (opcional)
-
-### Remover Membro
-```
-/membro_remover @usuario
-```
-
----
 
 ## 📝 Registro de Jogadores
 
@@ -167,36 +142,6 @@ Status: pendente, paga, recorrida
 
 ---
 
-## 📚 Gestão de Cursos
-
-### Listar Cursos
-```
-/curso_listar
-```
-
-### Inscrever Jogador
-```
-/curso_inscrever UTC58846 "Licença B"
-```
-
-### Aprovar Aluno
-```
-/curso_aprovar UTC58846 "Licença B"
-```
-
-### Reprovar Aluno
-```
-/curso_reprovar UTC58846 "Licença B"
-```
-
-**Cursos Disponíveis:**
-- Licença A, B, C, D, E
-- Licença Náutica
-- Licença Aérea
-
-**Permissões:** Diretor, Instrutor
-
----
 
 ## 📊 Relatórios
 
@@ -239,8 +184,8 @@ Status: pendente, paga, recorrida
 3. Registre todas as ocorrências durante blitz
 
 ### Para Instrutores
-1. Inscreva alunos nos cursos apropriados
-2. Emita CNH apenas após aprovação no curso
+1. Registre jogadores quando necessário
+2. Emita CNH apenas após verificar os requisitos
 3. Use `/cnh_consultar` para verificar status antes de emitir
 
 ### Para Diretores
@@ -253,7 +198,6 @@ Status: pendente, paga, recorrida
 ## 🆘 Solução de Problemas
 
 ### "Sem Permissão"
-- Verifique se você está registrado como membro
 - Confirme se seu cargo tem permissão para o comando
 
 ### "Jogador Não Encontrado"

@@ -105,19 +105,11 @@ Bot está online!
 Sincronizados X comandos slash
 ```
 
-### 2. Configurar Primeiro Diretor
-
-No Discord, use os comandos:
-```
-/membro_adicionar @seu_usuario Diretor
-```
-
-### 3. Testar Funcionalidades
+### 2. Testar Funcionalidades
 
 ```
 /taxas
 /infracoes
-/curso_listar
 ```
 
 ---
@@ -137,12 +129,11 @@ O bot controla permissões internamente:
 
 **Diretor:**
 - Todos os comandos
-- Gestão de membros
 - Relatórios
 
 **Instrutor:**
 - Registro de jogadores
-- Gestão de CNH e cursos
+- Gestão de CNH
 - Registro de veículos
 
 **Agente:**
@@ -258,7 +249,7 @@ sudo systemctl start detran-bot
 ### Erro de permissão
 
 **"Sem Permissão" para todos**
-- Use `/membro_adicionar` para registrar o primeiro diretor
+- Verifique se o bot possui os cargos corretos no servidor
 - Verifique se o Discord ID está correto
 
 ### Banco de dados corrompido

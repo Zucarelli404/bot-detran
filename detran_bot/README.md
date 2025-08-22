@@ -1,13 +1,8 @@
 # Bot Detran-SP - Roleplay
 
-Bot para Discord que administra e controla o Detran-SP de uma cidade de roleplay, incluindo funcionalidades de registro, multas, CNH, veículos e cursos.
+Bot para Discord que administra e controla o Detran-SP de uma cidade de roleplay, incluindo funcionalidades de registro, multas, CNH e veículos.
 
 ## 🚀 Funcionalidades
-
-### 👥 Gestão de Membros
-- Adicionar/remover membros da equipe do Detran
-- Controle de permissões por cargo (Diretor, Instrutor, Agente)
-- Listagem de membros por cargo
 
 ### 📋 Registro de Jogadores
 - Registro de jogadores usando RG do jogo
@@ -31,12 +26,6 @@ Bot para Discord que administra e controla o Detran-SP de uma cidade de roleplay
 - Controle de reincidência (multa em dobro)
 - Pagamento e recurso de multas
 - Atualização automática de pontos na CNH
-
-### 📚 Gestão de Cursos
-- Listagem de cursos disponíveis
-- Inscrição em cursos
-- Aprovação/reprovação de alunos
-- Controle de status dos cursos
 
 ### 🎫 Sistema de Tickets
 - Abertura de tickets de suporte pelos usuários
@@ -115,17 +104,12 @@ O bot usa os seguintes intents:
 ## 📋 Comandos Disponíveis
 
 ### Registro e CNH
-- `/registrar` - Registro de novo membro
+- `/registrar` - Registro de novo jogador
 - `/registrar_jogador` - Registra um novo jogador
 - `/cnh_emitir` - Emite uma nova CNH
 - `/cnh_consultar` - Consulta status da CNH
 - `/cnh_suspender` - Suspende CNH
 - `/cnh_cassar` - Cassa CNH
-
-### Membros do Detran
-- `/membro_adicionar` - Adiciona membro à equipe
-- `/membro_listar` - Lista membros
-- `/membro_remover` - Remove membro
 
 ### Veículos
 - `/veiculo_registrar` - Registra veículo
@@ -139,12 +123,6 @@ O bot usa os seguintes intents:
 - `/multa_consultar` - Consulta multas
 - `/multa_pagar` - Registra pagamento
 - `/multa_recorrer` - Registra recurso
-
-### Cursos
-- `/curso_listar` - Lista cursos
-- `/curso_inscrever` - Inscreve em curso
-- `/curso_aprovar` - Aprova aluno
-- `/curso_reprovar` - Reprova aluno
 
 ### Tickets
 - `/ticket_criar` - Cria um ticket de suporte
@@ -167,14 +145,12 @@ O bot usa os seguintes intents:
 
 **Diretor:**
 - Acesso total a todos os comandos
-- Gestão de membros
 - Emissão e gestão de CNH
 - Relatórios
 
 **Instrutor:**
 - Registro de jogadores
 - Emissão e renovação de CNH
-- Gestão de cursos
 - Registro de veículos
 
 **Agente:**
@@ -188,12 +164,9 @@ O bot usa SQLite para armazenar dados localmente. O arquivo `detran.db` é criad
 
 ### Tabelas Principais:
 - `players` - Jogadores registrados
-- `membros_detran` - Membros da equipe
 - `cnhs` - Carteiras de habilitação
 - `veiculos` - Veículos registrados
 - `multas` - Multas aplicadas
-- `cursos` - Cursos disponíveis
-- `inscricoes_cursos` - Inscrições em cursos
 
 ## 🚨 Regras de Negócio
 
@@ -231,8 +204,7 @@ python bot.py > bot.log 2>&1
 3. Verifique se os comandos foram sincronizados
 
 ### Erro de permissão
-1. Verifique se o usuário está registrado como membro do Detran
-2. Verifique se o cargo tem permissão para o comando
+1. Verifique se o cargo tem permissão para o comando
 
 ### Erro de banco de dados
 1. Verifique se o arquivo `detran.db` não está corrompido

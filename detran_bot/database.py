@@ -26,17 +26,6 @@ class DetranDatabase:
                 )
             ''')
             
-            # Tabela de membros do Detran
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS membros_detran (
-                    discord_id TEXT PRIMARY KEY,
-                    nome_discord TEXT NOT NULL,
-                    rg_game TEXT,
-                    cargo TEXT NOT NULL,
-                    FOREIGN KEY (rg_game) REFERENCES players(rg_game)
-                )
-            ''')
-            
             # Tabela de CNHs
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS cnhs (
@@ -78,32 +67,7 @@ class DetranDatabase:
                     data_ocorrencia TEXT NOT NULL,
                     status TEXT DEFAULT 'pendente',
                     FOREIGN KEY (jogador_id) REFERENCES players(rg_game),
-                    FOREIGN KEY (veiculo_id) REFERENCES veiculos(id),
-                    FOREIGN KEY (agente_id) REFERENCES membros_detran(discord_id)
-                )
-            ''')
-            
-            # Tabela de cursos
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS cursos (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    nome_curso TEXT UNIQUE NOT NULL,
-                    carga_horaria_teorica INTEGER,
-                    carga_horaria_pratica INTEGER,
-                    requisitos_aprovacao TEXT
-                )
-            ''')
-            
-            # Tabela de inscrições em cursos
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS inscricoes_cursos (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    jogador_id TEXT NOT NULL,
-                    curso_id INTEGER NOT NULL,
-                    data_inscricao TEXT NOT NULL,
-                    status TEXT DEFAULT 'em_andamento',
-                    FOREIGN KEY (jogador_id) REFERENCES players(rg_game),
-                    FOREIGN KEY (curso_id) REFERENCES cursos(id)
+                    FOREIGN KEY (veiculo_id) REFERENCES veiculos(id)
                 )
             ''')
             
@@ -142,29 +106,7 @@ class DetranDatabase:
             ''')
             
             conn.commit()
-            
-            # Inserir cursos padrão se não existirem
-            self._insert_default_courses(cursor)
-            conn.commit()
-    
-    def _insert_default_courses(self, cursor):
-        """Insere os cursos padrão baseados nos documentos"""
-        cursos_padrao = [
-            ("Licença A", 60, 30, "Prova teórica (mínimo 7 acertos de 10) + Percurso prático sem quedas"),
-            ("Licença B", 60, 60, "Prova teórica (mínimo 70% de acertos) + Percurso prático sem infrações"),
-            ("Licença C", 60, 90, "Prova teórica (mínimo 8 acertos de 10) + Teste prático sem infrações"),
-            ("Licença D", 60, 90, "Prova teórica (mínimo 8 acertos de 10) + Teste prático sem infrações"),
-            ("Licença E", 60, 90, "Prova teórica (mínimo 8 acertos de 10) + Teste prático sem infrações"),
-            ("Licença Náutica", 45, 30, "Prova teórica (mínimo 6 acertos) + Navegação prática sem colisões"),
-            ("Licença Aérea", 90, 60, "Prova teórica (mínimo 8 acertos) + Voo prático seguro e controlado")
-        ]
-        
-        for curso in cursos_padrao:
-            cursor.execute('''
-                INSERT OR IGNORE INTO cursos (nome_curso, carga_horaria_teorica, carga_horaria_pratica, requisitos_aprovacao)
-                VALUES (?, ?, ?, ?)
-            ''', curso)
-    
+
     # Métodos para Players
     def registrar_player(self, rg_game: str, nome_rp: str, telefone: str = None) -> bool:
         """Registra um novo jogador"""
@@ -228,49 +170,6 @@ class DetranDatabase:
                 SET cnh_status = ?
                 WHERE rg_game = ?
             ''', (status, rg_game))
-            conn.commit()
-            return cursor.rowcount > 0
-    
-    # Métodos para Membros do Detran
-    def adicionar_membro_detran(self, discord_id: str, nome_discord: str, cargo: str, rg_game: str = None) -> bool:
-        """Adiciona um membro à equipe do Detran"""
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    INSERT INTO membros_detran (discord_id, nome_discord, cargo, rg_game)
-                    VALUES (?, ?, ?, ?)
-                ''', (discord_id, nome_discord, cargo, rg_game))
-                conn.commit()
-                return True
-        except sqlite3.IntegrityError:
-            return False
-    
-    def get_membro_detran(self, discord_id: str) -> Optional[Dict[str, Any]]:
-        """Busca um membro do Detran pelo Discord ID"""
-        with sqlite3.connect(self.db_path) as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            cursor.execute('SELECT * FROM membros_detran WHERE discord_id = ?', (discord_id,))
-            row = cursor.fetchone()
-            return dict(row) if row else None
-    
-    def listar_membros_detran(self, cargo: str = None) -> List[Dict[str, Any]]:
-        """Lista membros do Detran, opcionalmente filtrado por cargo"""
-        with sqlite3.connect(self.db_path) as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            if cargo:
-                cursor.execute('SELECT * FROM membros_detran WHERE cargo = ?', (cargo,))
-            else:
-                cursor.execute('SELECT * FROM membros_detran')
-            return [dict(row) for row in cursor.fetchall()]
-    
-    def remover_membro_detran(self, discord_id: str) -> bool:
-        """Remove um membro da equipe do Detran"""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute('DELETE FROM membros_detran WHERE discord_id = ?', (discord_id,))
             conn.commit()
             return cursor.rowcount > 0
     
@@ -426,59 +325,6 @@ class DetranDatabase:
             conn.commit()
             return cursor.rowcount > 0
     
-    # Métodos para Cursos
-    def listar_cursos(self) -> List[Dict[str, Any]]:
-        """Lista todos os cursos disponíveis"""
-        with sqlite3.connect(self.db_path) as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            cursor.execute('SELECT * FROM cursos')
-            return [dict(row) for row in cursor.fetchall()]
-    
-    def inscrever_em_curso(self, rg_game: str, nome_curso: str) -> bool:
-        """Inscreve um jogador em um curso"""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            
-            # Buscar ID do curso
-            cursor.execute('SELECT id FROM cursos WHERE nome_curso = ?', (nome_curso,))
-            curso = cursor.fetchone()
-            if not curso:
-                return False
-            
-            curso_id = curso[0]
-            data_inscricao = datetime.now().strftime('%Y-%m-%d')
-            
-            try:
-                cursor.execute('''
-                    INSERT INTO inscricoes_cursos (jogador_id, curso_id, data_inscricao)
-                    VALUES (?, ?, ?)
-                ''', (rg_game, curso_id, data_inscricao))
-                conn.commit()
-                return True
-            except sqlite3.IntegrityError:
-                return False
-    
-    def atualizar_status_curso(self, rg_game: str, nome_curso: str, status: str) -> bool:
-        """Atualiza o status de um jogador em um curso"""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            
-            # Buscar ID do curso
-            cursor.execute('SELECT id FROM cursos WHERE nome_curso = ?', (nome_curso,))
-            curso = cursor.fetchone()
-            if not curso:
-                return False
-            
-            curso_id = curso[0]
-            
-            cursor.execute('''
-                UPDATE inscricoes_cursos 
-                SET status = ?
-                WHERE jogador_id = ? AND curso_id = ?
-            ''', (status, rg_game, curso_id))
-            conn.commit()
-            return cursor.rowcount > 0
 
     # Métodos para Tickets de Suporte
     def criar_ticket(self, autor_id: str, descricao: str) -> int:
