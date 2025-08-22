@@ -17,6 +17,8 @@ ROLE_REGISTRADO = 1408159947015065630
 CANAL_PAINEL_FUNCIONARIOS = 1408158616783163616
 # Canal onde novos membros devem se registrar
 CANAL_REGISTRO = 1403794454413967526
+# Canal onde os logs do sistema serão enviados
+CANAL_LOGS = 1406433637087449128
 """
 Novos canais e categorias utilizados pelo bot.
 """
