@@ -58,6 +58,26 @@ def criar_embed_info(titulo: str, descricao: str) -> discord.Embed:
     return embed
 
 
+class ComandoModal(discord.ui.Modal):
+    """Modal genérico apresentado ao pressionar um botão do painel."""
+
+    def __init__(self, titulo: str):
+        super().__init__(title=titulo)
+        self.informacoes = discord.ui.TextInput(
+            label="Informações",
+            style=discord.TextStyle.paragraph,
+            placeholder="Insira os dados necessários",
+            required=False,
+        )
+        self.add_item(self.informacoes)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        await interaction.response.send_message(
+            f"Modal '{self.title}' enviado.",
+            ephemeral=True,
+        )
+
+
 class PainelFuncionarios(discord.ui.View):
     """Painel com atalhos para os comandos principais."""
     def __init__(self):
@@ -69,10 +89,7 @@ class PainelFuncionarios(discord.ui.View):
         custom_id="painel_registrar_jogador"
     )
     async def registrar_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message(
-            "Use o comando /registrar_jogador para registrar um novo jogador.",
-            ephemeral=True
-        )
+        await interaction.response.send_modal(ComandoModal("Registrar Jogador"))
 
     @discord.ui.button(
         label="Emitir CNH",
@@ -80,10 +97,7 @@ class PainelFuncionarios(discord.ui.View):
         custom_id="painel_emitir_cnh"
     )
     async def cnh_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message(
-            "Use o comando /cnh_emitir para emitir uma CNH.",
-            ephemeral=True
-        )
+        await interaction.response.send_modal(ComandoModal("Emitir CNH"))
 
     @discord.ui.button(
         label="Consultar CNH",
@@ -91,10 +105,7 @@ class PainelFuncionarios(discord.ui.View):
         custom_id="painel_consultar_cnh"
     )
     async def cnh_consultar_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message(
-            "Use o comando /cnh_consultar para consultar uma CNH.",
-            ephemeral=True
-        )
+        await interaction.response.send_modal(ComandoModal("Consultar CNH"))
 
     @discord.ui.button(
         label="Registrar Veículo",
@@ -102,10 +113,7 @@ class PainelFuncionarios(discord.ui.View):
         custom_id="painel_registrar_veiculo"
     )
     async def veiculo_registrar_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message(
-            "Use o comando /veiculo_registrar para registrar um veículo.",
-            ephemeral=True
-        )
+        await interaction.response.send_modal(ComandoModal("Registrar Veículo"))
 
     @discord.ui.button(
         label="Aplicar Multa",
@@ -113,10 +121,7 @@ class PainelFuncionarios(discord.ui.View):
         custom_id="painel_aplicar_multa"
     )
     async def multar_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message(
-            "Use o comando /multar para aplicar uma multa.",
-            ephemeral=True
-        )
+        await interaction.response.send_modal(ComandoModal("Aplicar Multa"))
 
     @discord.ui.button(
         label="Abrir Ticket",
@@ -125,10 +130,7 @@ class PainelFuncionarios(discord.ui.View):
         row=1
     )
     async def ticket_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message(
-            "Use o comando /ticket_criar para abrir um ticket de suporte.",
-            ephemeral=True
-        )
+        await interaction.response.send_modal(ComandoModal("Abrir Ticket"))
 
 
 class RegistroModal(discord.ui.Modal, title="Registro"):
