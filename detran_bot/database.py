@@ -1,10 +1,12 @@
 import sqlite3
-import os
+import os.path
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 
+DB_PATH = os.path.join(os.path.dirname(__file__), "detran.db")
+
 class DetranDatabase:
-    def __init__(self, db_path: str = "detran.db"):
+    def __init__(self, db_path: str = DB_PATH):
         self.db_path = db_path
         self.init_database()
     
