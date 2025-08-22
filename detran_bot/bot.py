@@ -6,6 +6,7 @@ from datetime import datetime
 import sqlite3
 from database import DetranDatabase, DB_PATH
 from config import *
+from utils import verificar_permissao, criar_embed
 
 # Configuração dos intents
 intents = discord.Intents.default()
@@ -15,47 +16,6 @@ intents.members = True
 # Inicialização do bot
 bot = commands.Bot(command_prefix='!', intents=intents)
 db = DetranDatabase(db_path=DB_PATH)
-
-def verificar_permissao(interaction: discord.Interaction, comando: str) -> bool:
-    """Verifica se o usuário possui cargos necessários para o comando."""
-    role_ids = [role.id for role in interaction.user.roles]
-
-    # Gerência tem acesso total
-    if ROLE_GERENCIA in role_ids:
-        return True
-
-    # Funcionários possuem acesso limitado
-    if ROLE_FUNCIONARIOS in role_ids:
-        return comando in PERMISSOES_FUNCIONARIOS
-
-    return False
-
-def criar_embed_erro(titulo: str, descricao: str) -> discord.Embed:
-    """Cria um embed de erro"""
-    embed = discord.Embed(
-        title=f"❌ {titulo}",
-        description=descricao,
-        color=CORES["erro"]
-    )
-    return embed
-
-def criar_embed_sucesso(titulo: str, descricao: str) -> discord.Embed:
-    """Cria um embed de sucesso"""
-    embed = discord.Embed(
-        title=f"✅ {titulo}",
-        description=descricao,
-        color=CORES["sucesso"]
-    )
-    return embed
-
-def criar_embed_info(titulo: str, descricao: str) -> discord.Embed:
-    """Cria um embed informativo"""
-    embed = discord.Embed(
-        title=f"ℹ️ {titulo}",
-        description=descricao,
-        color=CORES["info"]
-    )
-    return embed
 
 
 class ComandoModal(discord.ui.Modal):
@@ -149,7 +109,7 @@ class RegistroModal(discord.ui.Modal, title="Registro"):
             await interaction.user.add_roles(role_registrado)
         if role_inicial:
             await interaction.user.remove_roles(role_inicial)
-        embed = criar_embed_sucesso("Registro concluído", f"Bem-vindo, {self.nome.value}!")
+        embed = criar_embed("sucesso", "Registro concluído", f"Bem-vindo, {self.nome.value}!")
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
@@ -183,7 +143,7 @@ class PainelTickets(discord.ui.View):
             overwrites[ger] = discord.PermissionOverwrite(view_channel=True, send_messages=True)
         canal = await guild.create_text_channel(f"ticket-{ticket_id}", category=categoria, overwrites=overwrites)
         await canal.send(f"{interaction.user.mention}, descreva seu problema.")
-        embed = criar_embed_sucesso("Ticket Criado", f"Seu ticket foi aberto: {canal.mention}")
+        embed = criar_embed("sucesso", "Ticket Criado", f"Seu ticket foi aberto: {canal.mention}")
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
@@ -203,7 +163,7 @@ class PainelCursos(discord.ui.View):
                     inline=False
                 )
         else:
-            embed = criar_embed_info("Cursos", "Nenhum curso cadastrado.")
+            embed = criar_embed("info", "Cursos", "Nenhum curso cadastrado.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
@@ -222,7 +182,7 @@ class SugestaoModal(discord.ui.Modal, title="Enviar Sugestão"):
         if canal:
             await canal.send(embed=embed)
         await interaction.response.send_message(
-            embed=criar_embed_sucesso("Sugestão enviada", f"Sugestão #{sugestao_id} registrada."),
+            embed=criar_embed("sucesso", "Sugestão enviada", f"Sugestão #{sugestao_id} registrada."),
             ephemeral=True
         )
 
@@ -309,7 +269,7 @@ async def on_member_join(member: discord.Member):
 @bot.tree.command(name="painel", description="Exibe o painel de controle do Detran")
 async def painel(interaction: discord.Interaction):
     if not verificar_permissao(interaction, "painel"):
-        embed = criar_embed_erro("Sem Permissão", "Você não tem permissão para executar este comando.")
+        embed = criar_embed("erro", "Sem Permissão", "Você não tem permissão para executar este comando.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
 
@@ -331,17 +291,17 @@ async def painel(interaction: discord.Interaction):
 )
 async def registrar_jogador(interaction: discord.Interaction, rg_game: str, nome_rp: str, telefone: str = None):
     if not verificar_permissao(interaction, "registrar"):
-        embed = criar_embed_erro("Sem Permissão", "Você não tem permissão para executar este comando.")
+        embed = criar_embed("erro", "Sem Permissão", "Você não tem permissão para executar este comando.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
     
     if db.registrar_player(rg_game, nome_rp, telefone):
-        embed = criar_embed_sucesso(
+        embed = criar_embed("sucesso", 
             "Jogador Registrado",
             f"**RG:** {rg_game}\n**Nome:** {nome_rp}\n**Telefone:** {telefone or 'Não informado'}"
         )
     else:
-        embed = criar_embed_erro("Erro no Registro", f"Jogador com RG {rg_game} já está registrado.")
+        embed = criar_embed("erro", "Erro no Registro", f"Jogador com RG {rg_game} já está registrado.")
     
     await interaction.response.send_message(embed=embed)
 
@@ -350,7 +310,7 @@ async def registrar_jogador(interaction: discord.Interaction, rg_game: str, nome
 @app_commands.describe(nome="Seu nome no jogo", rg="Seu RG no jogo")
 async def registrar(interaction: discord.Interaction, nome: str, rg: str):
     if interaction.channel_id != CANAL_REGISTRO:
-        embed = criar_embed_erro("Canal incorreto", "Use este comando no canal de registro.")
+        embed = criar_embed("erro", "Canal incorreto", "Use este comando no canal de registro.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
 
@@ -368,7 +328,7 @@ async def registrar(interaction: discord.Interaction, nome: str, rg: str):
     if role_inicial:
         await interaction.user.remove_roles(role_inicial)
 
-    embed = criar_embed_sucesso("Registro concluído", f"Bem-vindo, {nome}!")
+    embed = criar_embed("sucesso", "Registro concluído", f"Bem-vindo, {nome}!")
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
 @bot.tree.command(name="cnh_emitir", description="Emite uma nova CNH para um jogador")
@@ -388,7 +348,7 @@ async def registrar(interaction: discord.Interaction, nome: str, rg: str):
 ])
 async def cnh_emitir(interaction: discord.Interaction, rg_game: str, categoria: str, nome_rp: str = None):
     if not verificar_permissao(interaction, "cnh_emitir"):
-        embed = criar_embed_erro("Sem Permissão", "Você não tem permissão para executar este comando.")
+        embed = criar_embed("erro", "Sem Permissão", "Você não tem permissão para executar este comando.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
 
@@ -398,12 +358,12 @@ async def cnh_emitir(interaction: discord.Interaction, rg_game: str, categoria: 
             db.registrar_player(rg_game, nome_rp)
             player = db.get_player(rg_game)
         else:
-            embed = criar_embed_erro("Jogador Não Encontrado", f"Jogador com RG {rg_game} não registrado. Informe o nome para registrá-lo.")
+            embed = criar_embed("erro", "Jogador Não Encontrado", f"Jogador com RG {rg_game} não registrado. Informe o nome para registrá-lo.")
             await interaction.response.send_message(embed=embed)
             return
     
     numero_registro = db.emitir_cnh(rg_game, categoria)
-    embed = criar_embed_sucesso(
+    embed = criar_embed("sucesso", 
         "CNH Emitida",
         f"**Jogador:** {player['nome_rp']}\n**RG:** {rg_game}\n**Categoria:** {categoria}\n**Número:** {numero_registro}"
     )
@@ -414,7 +374,7 @@ async def cnh_emitir(interaction: discord.Interaction, rg_game: str, categoria: 
 async def cnh_consultar(interaction: discord.Interaction, rg_game: str):
     player = db.get_player(rg_game)
     if not player:
-        embed = criar_embed_erro("Jogador Não Encontrado", f"Não foi encontrado jogador com RG {rg_game}.")
+        embed = criar_embed("erro", "Jogador Não Encontrado", f"Não foi encontrado jogador com RG {rg_game}.")
         await interaction.response.send_message(embed=embed)
         return
     
@@ -450,23 +410,23 @@ async def cnh_consultar(interaction: discord.Interaction, rg_game: str):
 )
 async def cnh_suspender(interaction: discord.Interaction, rg_game: str, dias: int):
     if not verificar_permissao(interaction, "cnh_suspender"):
-        embed = criar_embed_erro("Sem Permissão", "Você não tem permissão para executar este comando.")
+        embed = criar_embed("erro", "Sem Permissão", "Você não tem permissão para executar este comando.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
     
     player = db.get_player(rg_game)
     if not player:
-        embed = criar_embed_erro("Jogador Não Encontrado", f"Não foi encontrado jogador com RG {rg_game}.")
+        embed = criar_embed("erro", "Jogador Não Encontrado", f"Não foi encontrado jogador com RG {rg_game}.")
         await interaction.response.send_message(embed=embed)
         return
     
     if db.atualizar_status_cnh(rg_game, "suspensa"):
-        embed = criar_embed_sucesso(
+        embed = criar_embed("sucesso", 
             "CNH Suspensa",
             f"**Jogador:** {player['nome_rp']}\n**RG:** {rg_game}\n**Período:** {dias} dias"
         )
     else:
-        embed = criar_embed_erro("Erro", "Não foi possível suspender a CNH.")
+        embed = criar_embed("erro", "Erro", "Não foi possível suspender a CNH.")
     
     await interaction.response.send_message(embed=embed)
 
@@ -474,23 +434,23 @@ async def cnh_suspender(interaction: discord.Interaction, rg_game: str, dias: in
 @app_commands.describe(rg_game="RG do jogador no jogo")
 async def cnh_cassar(interaction: discord.Interaction, rg_game: str):
     if not verificar_permissao(interaction, "cnh_cassar"):
-        embed = criar_embed_erro("Sem Permissão", "Você não tem permissão para executar este comando.")
+        embed = criar_embed("erro", "Sem Permissão", "Você não tem permissão para executar este comando.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
     
     player = db.get_player(rg_game)
     if not player:
-        embed = criar_embed_erro("Jogador Não Encontrado", f"Não foi encontrado jogador com RG {rg_game}.")
+        embed = criar_embed("erro", "Jogador Não Encontrado", f"Não foi encontrado jogador com RG {rg_game}.")
         await interaction.response.send_message(embed=embed)
         return
     
     if db.atualizar_status_cnh(rg_game, "cassada"):
-        embed = criar_embed_sucesso(
+        embed = criar_embed("sucesso", 
             "CNH Cassada",
             f"**Jogador:** {player['nome_rp']}\n**RG:** {rg_game}\n**Status:** Cassada definitivamente"
         )
     else:
-        embed = criar_embed_erro("Erro", "Não foi possível cassar a CNH.")
+        embed = criar_embed("erro", "Erro", "Não foi possível cassar a CNH.")
     
     await interaction.response.send_message(embed=embed)
 
@@ -508,17 +468,17 @@ async def cnh_cassar(interaction: discord.Interaction, rg_game: str):
 ])
 async def membro_adicionar(interaction: discord.Interaction, usuario: discord.Member, cargo: str, rg_game: str = None):
     if not verificar_permissao(interaction, "membro_adicionar"):
-        embed = criar_embed_erro("Sem Permissão", "Você não tem permissão para executar este comando.")
+        embed = criar_embed("erro", "Sem Permissão", "Você não tem permissão para executar este comando.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
     
     if db.adicionar_membro_detran(str(usuario.id), usuario.display_name, cargo, rg_game):
-        embed = criar_embed_sucesso(
+        embed = criar_embed("sucesso", 
             "Membro Adicionado",
             f"**Usuário:** {usuario.mention}\n**Cargo:** {cargo}\n**RG:** {rg_game or 'Não informado'}"
         )
     else:
-        embed = criar_embed_erro("Erro", f"Usuário {usuario.mention} já é membro do Detran.")
+        embed = criar_embed("erro", "Erro", f"Usuário {usuario.mention} já é membro do Detran.")
     
     await interaction.response.send_message(embed=embed)
 
@@ -533,7 +493,7 @@ async def membro_listar(interaction: discord.Interaction, cargo: str = None):
     membros = db.listar_membros_detran(cargo)
     
     if not membros:
-        embed = criar_embed_info("Lista de Membros", "Nenhum membro encontrado.")
+        embed = criar_embed("info", "Lista de Membros", "Nenhum membro encontrado.")
         await interaction.response.send_message(embed=embed)
         return
     
@@ -561,14 +521,14 @@ async def membro_listar(interaction: discord.Interaction, cargo: str = None):
 @app_commands.describe(usuario="Usuário do Discord")
 async def membro_remover(interaction: discord.Interaction, usuario: discord.Member):
     if not verificar_permissao(interaction, "membro_remover"):
-        embed = criar_embed_erro("Sem Permissão", "Você não tem permissão para executar este comando.")
+        embed = criar_embed("erro", "Sem Permissão", "Você não tem permissão para executar este comando.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
     
     if db.remover_membro_detran(str(usuario.id)):
-        embed = criar_embed_sucesso("Membro Removido", f"Usuário {usuario.mention} foi removido da equipe do Detran.")
+        embed = criar_embed("sucesso", "Membro Removido", f"Usuário {usuario.mention} foi removido da equipe do Detran.")
     else:
-        embed = criar_embed_erro("Erro", f"Usuário {usuario.mention} não é membro do Detran.")
+        embed = criar_embed("erro", "Erro", f"Usuário {usuario.mention} não é membro do Detran.")
     
     await interaction.response.send_message(embed=embed)
 
@@ -584,23 +544,23 @@ async def membro_remover(interaction: discord.Interaction, usuario: discord.Memb
 )
 async def veiculo_registrar(interaction: discord.Interaction, rg_game: str, placa: str, modelo: str, cor: str, ano: int, chassi: str):
     if not verificar_permissao(interaction, "veiculo_registrar"):
-        embed = criar_embed_erro("Sem Permissão", "Você não tem permissão para executar este comando.")
+        embed = criar_embed("erro", "Sem Permissão", "Você não tem permissão para executar este comando.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
     
     player = db.get_player(rg_game)
     if not player:
-        embed = criar_embed_erro("Proprietário Não Encontrado", f"Não foi encontrado jogador com RG {rg_game}.")
+        embed = criar_embed("erro", "Proprietário Não Encontrado", f"Não foi encontrado jogador com RG {rg_game}.")
         await interaction.response.send_message(embed=embed)
         return
     
     if db.registrar_veiculo(rg_game, placa.upper(), modelo, cor, ano, chassi):
-        embed = criar_embed_sucesso(
+        embed = criar_embed("sucesso", 
             "Veículo Registrado",
             f"**Proprietário:** {player['nome_rp']}\n**Placa:** {placa.upper()}\n**Modelo:** {modelo}\n**Cor:** {cor}\n**Ano:** {ano}"
         )
     else:
-        embed = criar_embed_erro("Erro no Registro", f"Veículo com placa {placa.upper()} já está registrado.")
+        embed = criar_embed("erro", "Erro no Registro", f"Veículo com placa {placa.upper()} já está registrado.")
     
     await interaction.response.send_message(embed=embed)
 
@@ -609,7 +569,7 @@ async def veiculo_registrar(interaction: discord.Interaction, rg_game: str, plac
 async def veiculo_consultar(interaction: discord.Interaction, placa: str):
     veiculo = db.get_veiculo(placa.upper())
     if not veiculo:
-        embed = criar_embed_erro("Veículo Não Encontrado", f"Não foi encontrado veículo com placa {placa.upper()}.")
+        embed = criar_embed("erro", "Veículo Não Encontrado", f"Não foi encontrado veículo com placa {placa.upper()}.")
         await interaction.response.send_message(embed=embed)
         return
     
@@ -642,29 +602,29 @@ async def veiculo_consultar(interaction: discord.Interaction, placa: str):
 )
 async def veiculo_transferir(interaction: discord.Interaction, placa: str, novo_rg: str):
     if not verificar_permissao(interaction, "veiculo_transferir"):
-        embed = criar_embed_erro("Sem Permissão", "Você não tem permissão para executar este comando.")
+        embed = criar_embed("erro", "Sem Permissão", "Você não tem permissão para executar este comando.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
     
     veiculo = db.get_veiculo(placa.upper())
     if not veiculo:
-        embed = criar_embed_erro("Veículo Não Encontrado", f"Não foi encontrado veículo com placa {placa.upper()}.")
+        embed = criar_embed("erro", "Veículo Não Encontrado", f"Não foi encontrado veículo com placa {placa.upper()}.")
         await interaction.response.send_message(embed=embed)
         return
     
     novo_proprietario = db.get_player(novo_rg)
     if not novo_proprietario:
-        embed = criar_embed_erro("Novo Proprietário Não Encontrado", f"Não foi encontrado jogador com RG {novo_rg}.")
+        embed = criar_embed("erro", "Novo Proprietário Não Encontrado", f"Não foi encontrado jogador com RG {novo_rg}.")
         await interaction.response.send_message(embed=embed)
         return
     
     if db.transferir_veiculo(placa.upper(), novo_rg):
-        embed = criar_embed_sucesso(
+        embed = criar_embed("sucesso", 
             "Transferência Realizada",
             f"**Veículo:** {placa.upper()}\n**Novo Proprietário:** {novo_proprietario['nome_rp']}\n**RG:** {novo_rg}"
         )
     else:
-        embed = criar_embed_erro("Erro", "Não foi possível realizar a transferência.")
+        embed = criar_embed("erro", "Erro", "Não foi possível realizar a transferência.")
     
     await interaction.response.send_message(embed=embed)
 
@@ -672,23 +632,23 @@ async def veiculo_transferir(interaction: discord.Interaction, placa: str, novo_
 @app_commands.describe(placa="Placa do veículo")
 async def veiculo_apreender(interaction: discord.Interaction, placa: str):
     if not verificar_permissao(interaction, "veiculo_apreender"):
-        embed = criar_embed_erro("Sem Permissão", "Você não tem permissão para executar este comando.")
+        embed = criar_embed("erro", "Sem Permissão", "Você não tem permissão para executar este comando.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
     
     veiculo = db.get_veiculo(placa.upper())
     if not veiculo:
-        embed = criar_embed_erro("Veículo Não Encontrado", f"Não foi encontrado veículo com placa {placa.upper()}.")
+        embed = criar_embed("erro", "Veículo Não Encontrado", f"Não foi encontrado veículo com placa {placa.upper()}.")
         await interaction.response.send_message(embed=embed)
         return
     
     if db.atualizar_status_veiculo(placa.upper(), "apreendido"):
-        embed = criar_embed_sucesso(
+        embed = criar_embed("sucesso", 
             "Veículo Apreendido",
             f"**Placa:** {placa.upper()}\n**Status:** Apreendido\n**Agente:** {interaction.user.mention}"
         )
     else:
-        embed = criar_embed_erro("Erro", "Não foi possível apreender o veículo.")
+        embed = criar_embed("erro", "Erro", "Não foi possível apreender o veículo.")
     
     await interaction.response.send_message(embed=embed)
 
@@ -696,23 +656,23 @@ async def veiculo_apreender(interaction: discord.Interaction, placa: str):
 @app_commands.describe(placa="Placa do veículo")
 async def veiculo_liberar(interaction: discord.Interaction, placa: str):
     if not verificar_permissao(interaction, "veiculo_liberar"):
-        embed = criar_embed_erro("Sem Permissão", "Você não tem permissão para executar este comando.")
+        embed = criar_embed("erro", "Sem Permissão", "Você não tem permissão para executar este comando.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
     
     veiculo = db.get_veiculo(placa.upper())
     if not veiculo:
-        embed = criar_embed_erro("Veículo Não Encontrado", f"Não foi encontrado veículo com placa {placa.upper()}.")
+        embed = criar_embed("erro", "Veículo Não Encontrado", f"Não foi encontrado veículo com placa {placa.upper()}.")
         await interaction.response.send_message(embed=embed)
         return
     
     if db.atualizar_status_veiculo(placa.upper(), "ativo"):
-        embed = criar_embed_sucesso(
+        embed = criar_embed("sucesso", 
             "Veículo Liberado",
             f"**Placa:** {placa.upper()}\n**Status:** Liberado\n**Agente:** {interaction.user.mention}"
         )
     else:
-        embed = criar_embed_erro("Erro", "Não foi possível liberar o veículo.")
+        embed = criar_embed("erro", "Erro", "Não foi possível liberar o veículo.")
     
     await interaction.response.send_message(embed=embed)
 
@@ -725,27 +685,27 @@ async def veiculo_liberar(interaction: discord.Interaction, placa: str):
 )
 async def multar(interaction: discord.Interaction, rg_game: str, tipo_infracao: str, placa_veiculo: str = None):
     if not verificar_permissao(interaction, "multar"):
-        embed = criar_embed_erro("Sem Permissão", "Você não tem permissão para executar este comando.")
+        embed = criar_embed("erro", "Sem Permissão", "Você não tem permissão para executar este comando.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
     
     player = db.get_player(rg_game)
     if not player:
-        embed = criar_embed_erro("Jogador Não Encontrado", f"Não foi encontrado jogador com RG {rg_game}.")
+        embed = criar_embed("erro", "Jogador Não Encontrado", f"Não foi encontrado jogador com RG {rg_game}.")
         await interaction.response.send_message(embed=embed)
         return
     
     if placa_veiculo:
         veiculo = db.get_veiculo(placa_veiculo.upper())
         if not veiculo:
-            embed = criar_embed_erro("Veículo Não Encontrado", f"Não foi encontrado veículo com placa {placa_veiculo.upper()}.")
+            embed = criar_embed("erro", "Veículo Não Encontrado", f"Não foi encontrado veículo com placa {placa_veiculo.upper()}.")
             await interaction.response.send_message(embed=embed)
             return
         placa_veiculo = placa_veiculo.upper()
     
     infracao = TABELA_INFRACOES.get(tipo_infracao)
     if not infracao:
-        embed = criar_embed_erro("Infração Inválida", "O código de infração informado não existe.")
+        embed = criar_embed("erro", "Infração Inválida", "O código de infração informado não existe.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
     multa_id = db.aplicar_multa(
@@ -823,7 +783,7 @@ async def multar_autocomplete(interaction: discord.Interaction, current: str):
 async def multa_consultar(interaction: discord.Interaction, rg_game: str, status: str = None):
     player = db.get_player(rg_game)
     if not player:
-        embed = criar_embed_erro("Jogador Não Encontrado", f"Não foi encontrado jogador com RG {rg_game}.")
+        embed = criar_embed("erro", "Jogador Não Encontrado", f"Não foi encontrado jogador com RG {rg_game}.")
         await interaction.response.send_message(embed=embed)
         return
     
@@ -831,7 +791,7 @@ async def multa_consultar(interaction: discord.Interaction, rg_game: str, status
     
     if not multas:
         status_texto = f" ({status})" if status else ""
-        embed = criar_embed_info("Consulta de Multas", f"Nenhuma multa encontrada para {player['nome_rp']}{status_texto}.")
+        embed = criar_embed("info", "Consulta de Multas", f"Nenhuma multa encontrada para {player['nome_rp']}{status_texto}.")
         await interaction.response.send_message(embed=embed)
         return
     
@@ -865,17 +825,17 @@ async def multa_consultar(interaction: discord.Interaction, rg_game: str, status
 @app_commands.describe(multa_id="ID da multa")
 async def multa_pagar(interaction: discord.Interaction, multa_id: int):
     if not verificar_permissao(interaction, "multa_pagar"):
-        embed = criar_embed_erro("Sem Permissão", "Você não tem permissão para executar este comando.")
+        embed = criar_embed("erro", "Sem Permissão", "Você não tem permissão para executar este comando.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
     
     if db.pagar_multa(multa_id):
-        embed = criar_embed_sucesso(
+        embed = criar_embed("sucesso", 
             "Multa Paga",
             f"**ID da Multa:** {multa_id}\n**Processado por:** {interaction.user.mention}"
         )
     else:
-        embed = criar_embed_erro("Erro", f"Não foi possível processar o pagamento da multa #{multa_id}.")
+        embed = criar_embed("erro", "Erro", f"Não foi possível processar o pagamento da multa #{multa_id}.")
     
     await interaction.response.send_message(embed=embed)
 
@@ -883,17 +843,17 @@ async def multa_pagar(interaction: discord.Interaction, multa_id: int):
 @app_commands.describe(multa_id="ID da multa")
 async def multa_recorrer(interaction: discord.Interaction, multa_id: int):
     if not verificar_permissao(interaction, "multa_recorrer"):
-        embed = criar_embed_erro("Sem Permissão", "Você não tem permissão para executar este comando.")
+        embed = criar_embed("erro", "Sem Permissão", "Você não tem permissão para executar este comando.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
     
     if db.recorrer_multa(multa_id):
-        embed = criar_embed_sucesso(
+        embed = criar_embed("sucesso", 
             "Recurso Registrado",
             f"**ID da Multa:** {multa_id}\n**Status:** Em recurso\n**Processado por:** {interaction.user.mention}"
         )
     else:
-        embed = criar_embed_erro("Erro", f"Não foi possível processar o recurso da multa #{multa_id}.")
+        embed = criar_embed("erro", "Erro", f"Não foi possível processar o recurso da multa #{multa_id}.")
     
     await interaction.response.send_message(embed=embed)
 
@@ -932,23 +892,23 @@ async def curso_listar(interaction: discord.Interaction):
 ])
 async def curso_inscrever(interaction: discord.Interaction, rg_game: str, nome_curso: str):
     if not verificar_permissao(interaction, "curso_inscrever"):
-        embed = criar_embed_erro("Sem Permissão", "Você não tem permissão para executar este comando.")
+        embed = criar_embed("erro", "Sem Permissão", "Você não tem permissão para executar este comando.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
     
     player = db.get_player(rg_game)
     if not player:
-        embed = criar_embed_erro("Jogador Não Encontrado", f"Não foi encontrado jogador com RG {rg_game}.")
+        embed = criar_embed("erro", "Jogador Não Encontrado", f"Não foi encontrado jogador com RG {rg_game}.")
         await interaction.response.send_message(embed=embed)
         return
     
     if db.inscrever_em_curso(rg_game, nome_curso):
-        embed = criar_embed_sucesso(
+        embed = criar_embed("sucesso", 
             "Inscrição Realizada",
             f"**Jogador:** {player['nome_rp']}\n**RG:** {rg_game}\n**Curso:** {nome_curso}\n**Instrutor:** {interaction.user.mention}"
         )
     else:
-        embed = criar_embed_erro("Erro na Inscrição", "Não foi possível realizar a inscrição. Verifique se o jogador já está inscrito neste curso.")
+        embed = criar_embed("erro", "Erro na Inscrição", "Não foi possível realizar a inscrição. Verifique se o jogador já está inscrito neste curso.")
     
     await interaction.response.send_message(embed=embed)
 
@@ -968,24 +928,24 @@ async def curso_inscrever(interaction: discord.Interaction, rg_game: str, nome_c
 ])
 async def curso_aprovar(interaction: discord.Interaction, rg_game: str, nome_curso: str):
     if not verificar_permissao(interaction, "curso_aprovar"):
-        embed = criar_embed_erro("Sem Permissão", "Você não tem permissão para executar este comando.")
+        embed = criar_embed("erro", "Sem Permissão", "Você não tem permissão para executar este comando.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
     
     player = db.get_player(rg_game)
     if not player:
-        embed = criar_embed_erro("Jogador Não Encontrado", f"Não foi encontrado jogador com RG {rg_game}.")
+        embed = criar_embed("erro", "Jogador Não Encontrado", f"Não foi encontrado jogador com RG {rg_game}.")
         await interaction.response.send_message(embed=embed)
         return
     
     if db.atualizar_status_curso(rg_game, nome_curso, "aprovado"):
-        embed = criar_embed_sucesso(
+        embed = criar_embed("sucesso", 
             "Aprovação Registrada",
             f"**Jogador:** {player['nome_rp']}\n**RG:** {rg_game}\n**Curso:** {nome_curso}\n**Status:** Aprovado\n**Instrutor:** {interaction.user.mention}"
         )
         embed.add_field(name="📋 Próximo Passo", value="Use `/cnh_emitir` para emitir a CNH correspondente.", inline=False)
     else:
-        embed = criar_embed_erro("Erro", "Não foi possível registrar a aprovação. Verifique se o jogador está inscrito neste curso.")
+        embed = criar_embed("erro", "Erro", "Não foi possível registrar a aprovação. Verifique se o jogador está inscrito neste curso.")
     
     await interaction.response.send_message(embed=embed)
 
@@ -1005,13 +965,13 @@ async def curso_aprovar(interaction: discord.Interaction, rg_game: str, nome_cur
 ])
 async def curso_reprovar(interaction: discord.Interaction, rg_game: str, nome_curso: str):
     if not verificar_permissao(interaction, "curso_reprovar"):
-        embed = criar_embed_erro("Sem Permissão", "Você não tem permissão para executar este comando.")
+        embed = criar_embed("erro", "Sem Permissão", "Você não tem permissão para executar este comando.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
     
     player = db.get_player(rg_game)
     if not player:
-        embed = criar_embed_erro("Jogador Não Encontrado", f"Não foi encontrado jogador com RG {rg_game}.")
+        embed = criar_embed("erro", "Jogador Não Encontrado", f"Não foi encontrado jogador com RG {rg_game}.")
         await interaction.response.send_message(embed=embed)
         return
     
@@ -1025,7 +985,7 @@ async def curso_reprovar(interaction: discord.Interaction, rg_game: str, nome_cu
         embed.add_field(name="Instrutor", value=interaction.user.mention, inline=True)
         embed.add_field(name="📋 Próximo Passo", value="O jogador pode se inscrever novamente após 24h.", inline=False)
     else:
-        embed = criar_embed_erro("Erro", "Não foi possível registrar a reprovação. Verifique se o jogador está inscrito neste curso.")
+        embed = criar_embed("erro", "Erro", "Não foi possível registrar a reprovação. Verifique se o jogador está inscrito neste curso.")
     
     await interaction.response.send_message(embed=embed)
 
@@ -1108,7 +1068,7 @@ async def regulamento(interaction: discord.Interaction):
 @app_commands.describe(agente="Usuário do Discord (agente)")
 async def relatorio_multas_agente(interaction: discord.Interaction, agente: discord.Member):
     if not verificar_permissao(interaction, "relatorios"):
-        embed = criar_embed_erro("Sem Permissão", "Você não tem permissão para executar este comando.")
+        embed = criar_embed("erro", "Sem Permissão", "Você não tem permissão para executar este comando.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
     
@@ -1154,7 +1114,7 @@ async def relatorio_multas_agente(interaction: discord.Interaction, agente: disc
 @bot.tree.command(name="relatorio_cnhs_suspensas", description="Lista todas as CNHs suspensas")
 async def relatorio_cnhs_suspensas(interaction: discord.Interaction):
     if not verificar_permissao(interaction, "relatorios"):
-        embed = criar_embed_erro("Sem Permissão", "Você não tem permissão para executar este comando.")
+        embed = criar_embed("erro", "Sem Permissão", "Você não tem permissão para executar este comando.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
     
@@ -1171,7 +1131,7 @@ async def relatorio_cnhs_suspensas(interaction: discord.Interaction):
         cnhs_problematicas = cursor.fetchall()
     
     if not cnhs_problematicas:
-        embed = criar_embed_info("CNHs Suspensas", "Nenhuma CNH suspensa, revogada ou cassada encontrada.")
+        embed = criar_embed("info", "CNHs Suspensas", "Nenhuma CNH suspensa, revogada ou cassada encontrada.")
         await interaction.response.send_message(embed=embed)
         return
     
@@ -1199,7 +1159,7 @@ async def relatorio_cnhs_suspensas(interaction: discord.Interaction):
 @app_commands.describe(descricao="Descreva seu problema")
 async def ticket_criar(interaction: discord.Interaction, descricao: str):
     ticket_id = db.criar_ticket(str(interaction.user.id), descricao)
-    embed = criar_embed_sucesso("Ticket Criado", f"Ticket #{ticket_id} registrado com sucesso.")
+    embed = criar_embed("sucesso", "Ticket Criado", f"Ticket #{ticket_id} registrado com sucesso.")
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
 @bot.tree.command(name="ticket_listar", description="Lista tickets de suporte")
@@ -1210,7 +1170,7 @@ async def ticket_criar(interaction: discord.Interaction, descricao: str):
 ])
 async def ticket_listar(interaction: discord.Interaction, status: str = "aberto"):
     if not verificar_permissao(interaction, "ticket_listar"):
-        embed = criar_embed_erro("Sem Permissão", "Você não tem permissão para executar este comando.")
+        embed = criar_embed("erro", "Sem Permissão", "Você não tem permissão para executar este comando.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
 
@@ -1222,21 +1182,21 @@ async def ticket_listar(interaction: discord.Interaction, status: str = "aberto"
     else:
         descricao = "Nenhum ticket encontrado."
 
-    embed = criar_embed_info("Tickets", descricao)
+    embed = criar_embed("info", "Tickets", descricao)
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
 @bot.tree.command(name="ticket_fechar", description="Fecha um ticket de suporte")
 @app_commands.describe(ticket_id="ID do ticket")
 async def ticket_fechar(interaction: discord.Interaction, ticket_id: int):
     if not verificar_permissao(interaction, "ticket_fechar"):
-        embed = criar_embed_erro("Sem Permissão", "Você não tem permissão para executar este comando.")
+        embed = criar_embed("erro", "Sem Permissão", "Você não tem permissão para executar este comando.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
 
     if db.fechar_ticket(ticket_id):
-        embed = criar_embed_sucesso("Ticket Fechado", f"Ticket #{ticket_id} foi fechado.")
+        embed = criar_embed("sucesso", "Ticket Fechado", f"Ticket #{ticket_id} foi fechado.")
     else:
-        embed = criar_embed_erro("Erro", f"Ticket #{ticket_id} não encontrado ou já fechado.")
+        embed = criar_embed("erro", "Erro", f"Ticket #{ticket_id} não encontrado ou já fechado.")
 
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
@@ -1245,7 +1205,7 @@ async def ticket_fechar(interaction: discord.Interaction, ticket_id: int):
 @app_commands.describe(mensagem="Conteúdo do aviso")
 async def aviso(interaction: discord.Interaction, mensagem: str):
     if not verificar_permissao(interaction, "aviso"):
-        embed = criar_embed_erro("Sem Permissão", "Você não tem permissão para executar este comando.")
+        embed = criar_embed("erro", "Sem Permissão", "Você não tem permissão para executar este comando.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
 
@@ -1253,9 +1213,9 @@ async def aviso(interaction: discord.Interaction, mensagem: str):
     if canal:
         embed = discord.Embed(title="📢 Aviso", description=mensagem, color=CORES["info"])
         await canal.send(embed=embed)
-        resposta = criar_embed_sucesso("Aviso enviado", f"Aviso publicado em {canal.mention}.")
+        resposta = criar_embed("sucesso", "Aviso enviado", f"Aviso publicado em {canal.mention}.")
     else:
-        resposta = criar_embed_erro("Erro", "Canal de avisos não encontrado.")
+        resposta = criar_embed("erro", "Erro", "Canal de avisos não encontrado.")
     await interaction.response.send_message(embed=resposta, ephemeral=True)
 
 # Comando para executar o bot
